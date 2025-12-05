@@ -1,13 +1,22 @@
-//app/_layout.tsx
+// app/_layout.tsx
+
+// ★ この2行は一番上（他の import より前）
+import 'react-native-gesture-handler';
+import 'react-native-reanimated';
+
 import { AuthProvider } from '@/contexts/AuthContext';
 import { Stack } from 'expo-router';
-import 'react-native-reanimated';
-import './globals.css';
+import '../globals.css';
 
 export default function RootLayout() {
   return (
     <AuthProvider>
-      <Stack>
+      <Stack
+        screenOptions={{
+          headerShown: false,
+        
+        }}
+      >
         <Stack.Screen name="index" options={{ headerShown: false }} />
         <Stack.Screen name="profile" options={{ headerShown: false }} />
         <Stack.Screen name="login" options={{ headerShown: false }} />

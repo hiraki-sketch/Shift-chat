@@ -1,5 +1,4 @@
 // app.config.js
-
 import 'dotenv/config';
 
 export default {
@@ -11,28 +10,39 @@ export default {
     icon: "./assets/images/icon.png",
     scheme: "shiftchat",
     userInterfaceStyle: "automatic",
-    ios: { supportsTablet: true },
+//new archtecture は書かない
+
+    ios: { 
+      supportsTablet: true ,
+    bundleIdentifier: "com.hiraki.shiftchat",
+    infoPlist: {
+  ITSAppUsesNonExemptEncryption: false
+    }
+},
     android: {
+      package: "com.hiraki.shiftchat",
       adaptiveIcon: {
         foregroundImage: "./assets/images/adaptive-icon.png",
         backgroundColor: "#ffffff"
       },
       edgeToEdgeEnabled: true
     },
-    web: { //bundler: "metro", output: "static", 
+    web: {
       bundler: "metro",
-         favicon: "./assets/images/favicon.png" },
+      favicon: "./assets/images/favicon.png"
+    },
     plugins: [
       "expo-router",
       ["expo-splash-screen", { image: "./assets/images/splash-icon.png", imageWidth: 200, resizeMode: "contain", backgroundColor: "#ffffff"}],
-      "expo-font",          // ← 追加
-      "expo-web-browser",  
+      "expo-font",
+      "expo-web-browser",
     ],
-    //experiments: { typedRoutes: true },
-    // ← 公開OKの値だけ。envから流す
     extra: {
       supabaseUrl: process.env.EXPO_PUBLIC_SUPABASE_URL,
       supabaseAnonKey: process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY,
+      eas: {
+        projectId: "af139760-23fd-4d1e-8a1a-58f685e7148c",
+      },
     },
   },
 };

@@ -56,7 +56,7 @@ export function ChatThreads({ user, selectedShift, onNavigate }: ChatThreadsProp
     {
       id: '2',
       threadId: '1',
-      author: '作業者飯尾',
+      author: '作業者',
       body: 'すすす、、、すいません!!!!!。ライン2の調子はどうでしょうか？',
       createdAt: '2024-12-20 08:05'
     }
