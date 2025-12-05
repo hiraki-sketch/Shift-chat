@@ -103,7 +103,7 @@ export function LoginScreen({ onPressLogin }: LoginScreenProps) {
           <View className="flex-row items-center justify-between">
             <Button
               variant="ghost"
-              onPress={() => router.replace('/')}
+              onPress={() => router.replace('/home')}
               className="flex-row items-center gap-2 text-muted-foreground hover:text-foreground hover:bg-accent px-3 py-2 rounded-md transition-colors"
             >
               <Text>←</Text>
@@ -113,7 +113,7 @@ export function LoginScreen({ onPressLogin }: LoginScreenProps) {
               <View className="w-6 h-6 bg-primary rounded-md items-center justify-center">
                 <Text className="text-primary-foreground text-sm">F</Text>
               </View>
-              <Text className="text-sm font-medium text-foreground">FactryNote</Text>
+              <Text className="text-sm font-medium text-foreground">SHIFT-CHAT</Text>
             </View>
           </View>
         </View>

@@ -1,7 +1,12 @@
+//profile-settings.tsx
+import { supabase } from '@/lib/supabase';
+import { useRouter } from 'expo-router';
 import { useState } from 'react';
-import { ScrollView, Switch, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, ScrollView, Switch, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from "react-native-safe-area-context";
 import { User } from '../types';
+
+
 interface ProfileSettingsProps {
   user: User;
   onNavigate: (page: string) => void;
@@ -9,6 +14,8 @@ interface ProfileSettingsProps {
 }
 
 export function ProfileSettings({ user, onNavigate, onLogout }: ProfileSettingsProps) {
+  const router = useRouter();
+  const [loadingLogout, setLoadingLogout] = useState(false);
   const [displayName, setDisplayName] = useState(user.displayName);
   const [email, setEmail] = useState(user.email);
   const [department, setDepartment] = useState(user.department);
@@ -97,6 +104,21 @@ export function ProfileSettings({ user, onNavigate, onLogout }: ProfileSettingsP
       </Text>
     </View>
   );
+  const handleLogoutInternal = async () => {
+    if (onLogout) {
+      return onLogout();
+    }
+    try {
+      setLoadingLogout(true);
+      await supabase.auth.signOut();
+      router.replace('/login');
+    } catch {
+      Alert.alert('ログアウトに失敗しました。もう一度お試しください');
+    } finally {
+      setLoadingLogout(false);
+    }
+  };
+
   return (
     <SafeAreaView className="flex-1">
     <ScrollView className="flex-1 bg-background">
@@ -118,10 +140,14 @@ export function ProfileSettings({ user, onNavigate, onLogout }: ProfileSettingsP
             </View>
             <Button
               variant="outline"
-              onPress={onLogout}
+              onPress={handleLogoutInternal}
               className="border-red-500"
             >
+              {loadingLogout ? (
+                <ActivityIndicator />
+              ) : (
               <Text className="text-red-500">🚪 ログアウト</Text>
+              )}
             </Button>
           </View>
         </View>

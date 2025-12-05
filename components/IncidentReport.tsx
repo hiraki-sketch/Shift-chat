@@ -4,6 +4,7 @@ import { Alert, Image, ScrollView, Text, TextInput, TouchableOpacity, View } fro
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Incident, Shift, User } from '../types';
 import { FileText, MessageCircle } from './ui/icons';
+//import { supabase } from '@/lib/supabase';
 
 // 異常報告画面 Props
 interface IncidentReportProps {
@@ -61,7 +62,8 @@ export function IncidentReport({ user, selectedShift, onNavigate }: IncidentRepo
     setPhotos(photos.filter((_, i) => i !== index));
   };
 
-  const handleSubmit = async () => {
+  const handleSubmit = () => {
+  
     if (!title.trim() || !description.trim()) return;
 
     setIsSubmitting(true);
