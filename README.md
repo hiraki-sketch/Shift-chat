@@ -1,4 +1,5 @@
 交代勤務向け　引継ぎチャットツールアプリ
+課題解決　のために作成
 
 This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
 
