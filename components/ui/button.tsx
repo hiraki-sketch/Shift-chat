@@ -3,24 +3,30 @@ import { Pressable, PressableProps, Text } from 'react-native';
 
 interface ButtonProps extends PressableProps {
   children: React.ReactNode;
-  variant?: 'default' | 'outline' | 'ghost';
+  variant?: 'default' | 'outline' | 'ghost' | 'destructive' | 'secondary';
   size?: 'sm' | 'md' | 'lg';
   className?: string;
+  disabled?: boolean;
 }
 
 export function Button({ 
   children, 
-  variant = 'default', 
+  // 指定がない場合は outline にして、スタイルが崩れにくいようにする
+  variant = 'outline', 
   size = 'md', 
   className = '',
+  disabled = false,
   ...props 
 }: ButtonProps) {
   const baseClasses = 'flex-row items-center justify-center rounded-md';
   
   const variantClasses = {
     default: 'bg-primary',
-    outline: 'border border-input bg-background',
-    ghost: 'bg-transparent'
+    // outline は背景を塗らない（ライトで白になって見づらいのを防ぐ）
+    outline: 'border border-input bg-transparent',
+    ghost: 'bg-transparent',
+    destructive: 'bg-red-500',
+    secondary: 'bg-muted'
   };
   
   const sizeClasses = {
@@ -30,9 +36,12 @@ export function Button({
   };
   
   const textClasses = {
-    default: 'text-primary-foreground',
-    outline: 'text-foreground',
-    ghost: 'text-foreground'
+    // Pure white より少し落として読みやすくする
+    default: 'text-gray-50',
+    outline: 'text-gray-900 dark:text-gray-100',
+    ghost: 'text-gray-900 dark:text-gray-100',
+    destructive: 'text-gray-50',
+    secondary: 'text-gray-900 dark:text-gray-100'
   };
   
   const textSizeClasses = {
@@ -41,14 +50,20 @@ export function Button({
     lg: 'text-lg'
   };
 
+  const isTextOnly = typeof children === 'string';
   return (
     <Pressable
-      className={`${baseClasses} ${variantClasses[variant]} ${sizeClasses[size]} ${className}`}
+      className={`${baseClasses} ${variantClasses[variant]} ${sizeClasses[size]} ${disabled ? 'opacity-50' : ''} ${className}`}
+      disabled={disabled}
       {...props}
     >
-      <Text className={`font-medium ${textClasses[variant]} ${textSizeClasses[size]}`}>
-        {children}
-      </Text>
+      {isTextOnly ? (
+        <Text className={`font-medium ${textClasses[variant]} ${textSizeClasses[size]}`}>
+          {children}
+        </Text>
+      ) : (
+        children
+      )}
     </Pressable>
   );
 }

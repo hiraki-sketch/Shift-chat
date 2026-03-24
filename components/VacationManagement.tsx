@@ -1,198 +1,31 @@
-import { ResponsiveGrid } from "@/components/layout/ResponsiveGrid";
-import { useState } from 'react';
-import { Alert, Modal, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Alert, Modal, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from "react-native-safe-area-context";
-import { User, VacationRequest } from '../types';
+import { User } from '../types';
+import { ResponsiveGrid } from "./layout/ResponsiveGrid";
+import { Badge } from "./ui/badge";
+import { Button } from "./ui/button";
+import { Card } from "./ui/card";
+import { Input } from "./ui/input";
+import { Label } from "./ui/label";
+import { useVacationManagement } from "../src/hooks/useVacationManagement";
 interface VacationManagementProps {
   user: User;
   onNavigate: (page: string) => void;
 }
 
 export function VacationManagement({ user, onNavigate }: VacationManagementProps) {
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [startDate, setStartDate] = useState('');
-  const [endDate, setEndDate] = useState('');
-  const [vacationType, setVacationType] = useState<'paid_leave' | 'sick_leave' | 'personal_leave' | 'compensatory_leave'>('paid_leave');
-  const [reason, setReason] = useState('');
-
-  // モック有給データ
-  const vacationBalance = {
-    totalDays: 20,
-    usedDays: 8,
-    remainingDays: 12,
-    expiringSoon: 5 // 来年3月末で失効予定
-  };
-
-  // モック申請データ
-  const vacationRequests: VacationRequest[] = [
-    {
-      id: '1',
-      userId: user.id,
-      startDate: '2024-12-25',
-      endDate: '2024-12-27',
-      type: 'paid_leave',
-      reason: '年末年始休暇',
-      status: 'approved',
-      requestedAt: '2024-12-10 09:00',
-      approvedBy: '部長 山田',
-      approvedAt: '2024-12-10 14:30'
-    },
-    {
-      id: '2',
-      userId: user.id,
-      startDate: '2024-12-30',
-      endDate: '2024-12-30',
-      type: 'personal_leave',
-      reason: '家族の用事',
-      status: 'pending',
-      requestedAt: '2024-12-15 11:20'
-    },
-    {
-      id: '3',
-      userId: user.id,
-      startDate: '2024-11-20',
-      endDate: '2024-11-21',
-      type: 'paid_leave',
-      reason: 'リフレッシュ休暇',
-      status: 'approved',
-      requestedAt: '2024-11-05 10:15',
-      approvedBy: '部長 山田',
-      approvedAt: '2024-11-05 16:45'
-    },
-    {
-      id: '4',
-      userId: user.id,
-      startDate: '2024-11-01',
-      endDate: '2024-11-01',
-      type: 'sick_leave',
-      reason: '体調不良',
-      status: 'rejected',
-      requestedAt: '2024-10-30 08:30',
-      rejectionReason: '事前申請が必要です'
-    }
-  ];
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'approved': return 'bg-green-500';
-      case 'pending': return 'bg-yellow-500';
-      case 'rejected': return 'bg-red-500';
-      default: return 'bg-gray-500';
-    }
-  };
-
-  const getStatusText = (status: string) => {
-    switch (status) {
-      case 'approved': return '承認済み';
-      case 'pending': return '承認待ち';
-      case 'rejected': return '却下';
-      default: return '不明';
-    }
-  };
-
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case 'approved': return '✅';
-      case 'pending': return '⏰';
-      case 'rejected': return '❌';
-      default: return '❓';
-    }
-  };
-
-  const getTypeText = (type: string) => {
-    switch (type) {
-      case 'paid_leave': return '有給休暇';
-      case 'sick_leave': return '病気休暇';
-      case 'personal_leave': return '私用休暇';
-      case 'compensatory_leave': return '代休';
-      default: return '不明';
-    }
-  };
-
-  const calculateDays = (start: string, end: string) => {
-    const startDate = new Date(start);
-    const endDate = new Date(end);
-    const diffTime = Math.abs(endDate.getTime() - startDate.getTime());
-    return Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
-  };
-
-  const handleSubmitRequest = () => {
-    if (!startDate || !endDate || !reason.trim()) {
-      Alert.alert('エラー', 'すべての項目を入力してください');
-      return;
-    }
-
-    const newRequest: VacationRequest = {
-      id: Date.now().toString(),
-      userId: user.id,
-      startDate,
-      endDate,
-      type: vacationType,
-      reason,
-      status: 'pending',
-      requestedAt: new Date().toISOString()
-    };
-
-    console.log('新しい休暇申請:', newRequest);
-    
-    // フォームをリセット
-    setStartDate('');
-    setEndDate('');
-    setReason('');
-    setVacationType('paid_leave');
-    setIsModalOpen(false);
-    
-    Alert.alert('完了', '休暇申請を提出しました');
-  };
-
-  // シンプルなUIラッパ
-  const Card = ({ children, className = "" }: any) => (
-    <View className={`bg-white rounded-lg border border-gray-200 p-4 ${className}`}>
-      {children}
-    </View>
-  );
-
-  const Button = ({ children, onPress, variant = "default", className = "" }: any) => (
-    <TouchableOpacity
-      onPress={onPress}
-      className={[
-        "rounded-lg px-4 py-3 items-center justify-center",
-        variant === "outline" ? "border border-gray-300 bg-transparent" : "",
-        variant === "default" ? "bg-blue-600" : "",
-        className,
-      ].join(" ")}
-    >
-      <Text className={`${
-        variant === "default" ? "text-white" : "text-gray-700"
-      } text-base font-medium`}>
-        {children}
-      </Text>
-    </TouchableOpacity>
-  );
-
-  const Input = ({ value, onChangeText, placeholder, className = "" }: any) => (
-    <TextInput
-      value={value}
-      onChangeText={onChangeText}
-      placeholder={placeholder}
-      className={`border border-gray-300 rounded-lg px-3 py-2 text-gray-900 bg-white ${className}`}
-      placeholderTextColor="#9ca3af"
-    />
-  );
-
-  const Badge = ({ children, variant = "secondary", className = "" }: any) => (
-    <View className={`px-2 py-1 rounded-md ${variant === "secondary" ? "bg-gray-100" : "bg-gray-200"} ${className}`}>
-      <Text className="text-xs text-gray-700 font-medium">
-        {children}
-      </Text>
-    </View>
-  );
-
-  const Label = ({ children, className = "" }: any) => (
-    <Text className={`text-sm font-medium text-gray-700 mb-2 ${className}`}>
-      {children}
-    </Text>
-  );
+  const { state, data, utils, actions } = useVacationManagement(user);
+  const { isModalOpen, startDate, endDate, vacationType, reason } = state;
+  const { vacationBalance, vacationRequests } = data;
+  const { getStatusColor, getStatusText, getStatusIcon, getTypeText, calculateDays } = utils;
+  const {
+    setIsModalOpen,
+    setStartDate,
+    setEndDate,
+    setVacationType,
+    setReason,
+    handleSubmitRequest,
+  } = actions;
 
   return (
     <SafeAreaView className="flex-1">
@@ -200,22 +33,22 @@ export function VacationManagement({ user, onNavigate }: VacationManagementProps
       {/* ヘッダー */}
       <View className="bg-white border-b border-gray-200">
         <View className="px-4 py-4">
-          <View className="flex-row items-center justify-between">
+            <View className="flex-row items-center justify-between">
             <View className="flex-row items-center space-x-4">
-              <TouchableOpacity
+              <Button
+                variant="ghost"
                 onPress={() => onNavigate('index')}
                 className="p-2 rounded-lg"
               >
-                <Text className="text-2xl">←</Text>
-              </TouchableOpacity>
+                ←
+              </Button>
               <View>
                 <Text className="text-xl font-semibold text-gray-900">有給休暇管理</Text>
                 <Text className="text-sm text-gray-500">{user.displayName} - {user.department}</Text>
               </View>
             </View>
             <Button onPress={() => setIsModalOpen(true)}>
-              <Text className="mr-2">➕</Text>
-              <Text>新規申請</Text>
+              <Text className="text-white font-semibold">➕ 新規申請</Text>
             </Button>
           </View>
         </View>
@@ -374,9 +207,9 @@ export function VacationManagement({ user, onNavigate }: VacationManagementProps
             <View className="px-4 py-4">
               <View className="flex-row items-center justify-between">
                 <Text className="text-lg font-semibold">休暇申請</Text>
-                <TouchableOpacity onPress={() => setIsModalOpen(false)}>
-                  <Text className="text-blue-600 text-base">キャンセル</Text>
-                </TouchableOpacity>
+                <Button variant="ghost" onPress={() => setIsModalOpen(false)} className="text-blue-600">
+                  キャンセル
+                </Button>
               </View>
             </View>
           </View>
@@ -438,21 +271,24 @@ export function VacationManagement({ user, onNavigate }: VacationManagementProps
 
               <View>
                 <Label>理由</Label>
-                <TextInput
+                <Input
                   value={reason}
                   onChangeText={setReason}
                   placeholder="休暇を取得する理由を入力してください"
                   multiline
                   numberOfLines={3}
-                  className="border border-gray-300 rounded-lg px-3 py-2 text-gray-900 bg-white"
-                  placeholderTextColor="#9ca3af"
                 />
               </View>
             </View>
           </ScrollView>
 
           <View className="p-4 border-t border-gray-200">
-            <Button onPress={handleSubmitRequest}>
+            <Button
+              onPress={() => {
+                const res = handleSubmitRequest();
+                Alert.alert(res.title, res.message);
+              }}
+            >
               申請提出
             </Button>
           </View>

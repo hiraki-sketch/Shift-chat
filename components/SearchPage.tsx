@@ -1,128 +1,32 @@
 //search-page.tsx
-import { ResponsiveGrid } from "@/components/layout/ResponsiveGrid";
-import { useState } from 'react';
-import { ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from "react-native-safe-area-context";
-import { Shift, User } from '../types';
+import { User } from '../types';
+import { useSearchPageManagement } from "../src/hooks/useSearchPageManagement";
+import { ResponsiveGrid } from "./layout/ResponsiveGrid";
+import { Badge } from "./ui/badge";
+import { Button } from "./ui/button";
+import { Card } from "./ui/card";
+import { Input } from "./ui/input";
+import { Label } from "./ui/label";
 interface SearchPageProps {
   user: User;
   onNavigate: (page: string) => void;
 }
 
-type SearchType = 'all' | 'incident' | 'announcement';
-
 export function SearchPage({ user, onNavigate }: SearchPageProps) {
-  const [searchTerm, setSearchTerm] = useState('');
-  const [searchType, setSearchType] = useState<SearchType>('all');
-  const [selectedShift, setSelectedShift] = useState<Shift | 'all'>('all');
-  const [selectedSeverity, setSelectedSeverity] = useState<'all' | 'low' | 'medium' | 'high'>('all');
-  const [showFilters, setShowFilters] = useState(false);
+  const { state, data, utils, actions } = useSearchPageManagement(user);
+  const { searchTerm, searchType, selectedShift, selectedSeverity, showFilters } = state;
+  const { filteredResults } = data;
+  const { getTypeIcon, getTypeText } = utils;
+  const {
+    setSearchTerm,
+    setSearchType,
+    setSelectedShift,
+    setSelectedSeverity,
+    toggleFilters,
+  } = actions;
 
-  // モック検索結果
-  const searchResults = [
-    {
-      id: '1',
-      type: 'incident' as const,
-      title: '機械異常音発生',
-      content: 'ライン2の機械から異常音が発生しています。すぐに点検が必要です。',
-      severity: 'high' as const,
-      status: 'open' as const,
-      shift: '2勤' as Shift,
-      author: '作業者A',
-      createdAt: '2024-12-20 14:30',
-      department: user.department
-    },
-    {
-      id: '2',
-      type: 'announcement' as const,
-      title: '来週の保守点検について',
-      content: '来週月曜日から水曜日まで、機械の定期保守点検を実施します。',
-      author: '保守担当 佐藤',
-      createdAt: '2024-12-20 16:00',
-      department: user.department
-    }
-  ];
-
-  const filteredResults = searchResults.filter(item => {
-    const matchesSearch = !searchTerm || 
-      item.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      item.content.toLowerCase().includes(searchTerm.toLowerCase());
-    
-    const matchesType = searchType === 'all' || item.type === searchType;
-    const matchesShift = selectedShift === 'all' || 
-      ('shift' in item && item.shift === selectedShift);
-    const matchesSeverity = selectedSeverity === 'all' || 
-      ('severity' in item && item.severity === selectedSeverity);
-    
-    return matchesSearch && matchesType && matchesShift && matchesSeverity;
-  });
-
-  const getTypeIcon = (type: string) => {
-    switch (type) {
-      case 'incident': return <Text className="text-red-500 text-lg">🚨</Text>;
-      case 'announcement': return <Text className="text-blue-500 text-lg">📢</Text>;
-      default: return <Text className="text-gray-500 text-lg">🔍</Text>;
-    }
-  };
-
-  const getTypeText = (type: string) => {
-    switch (type) {
-      case 'incident': return '異常報告';
-      case 'announcement': return '部署連絡';
-      default: return '不明';
-    }
-  };
-
-  // シンプルなUIラッパ
-  const Card = ({ children, className = "" }: any) => (
-    <View className={`bg-white rounded-lg border border-gray-200 p-4 ${className}`}>
-      {children}
-    </View>
-  );
-
-  const Button = ({ children, onPress, variant = "default", size = "default", className = "" }: any) => (
-    <TouchableOpacity
-      onPress={onPress}
-      className={[
-        "rounded-lg px-3 py-2 items-center justify-center",
-        size === "sm" ? "px-2 py-1" : "px-3 py-2",
-        variant === "outline" ? "border border-gray-300 bg-transparent" : "",
-        variant === "ghost" ? "bg-transparent" : "",
-        variant === "default" ? "bg-blue-600" : "",
-        className,
-      ].join(" ")}
-    >
-      <Text className={`${
-        variant === "default" ? "text-white" : "text-gray-700"
-      } text-sm font-medium`}>
-        {children}
-      </Text>
-    </TouchableOpacity>
-  );
-
-  const Input = ({ value, onChangeText, placeholder, className = "" }: any) => (
-    <TextInput
-      value={value}
-      onChangeText={onChangeText}
-      placeholder={placeholder}
-      className={`border border-gray-300 rounded-lg px-3 py-2 text-gray-900 bg-white ${className}`}
-      placeholderTextColor="#9ca3af"
-    />
-  );
-
-  const Badge = ({ children, variant = "secondary", className = "" }: any) => (
-    <View className={`px-2 py-1 rounded-md ${variant === "secondary" ? "bg-gray-100" : "bg-gray-200"} ${className}`}>
-      <Text className="text-xs text-gray-700 font-medium">
-        {children}
-      </Text>
-    </View>
-  );
-
-  const Label = ({ children, className = "" }: any) => (
-    <Text className={`text-sm font-medium text-gray-700 mb-2 ${className}`}>
-      {children}
-    </Text>
-  );
 
   return (
     <SafeAreaView className="flex-1">
@@ -132,19 +36,16 @@ export function SearchPage({ user, onNavigate }: SearchPageProps) {
         <View className="px-4 py-4">
           <View className="flex-row items-center justify-between">
             <View className="flex-row items-center space-x-4">
-              <TouchableOpacity
-                onPress={() => onNavigate('index')}
-                className="p-2 rounded-lg"
-              >
-                <Text className="text-2xl">←</Text>
-              </TouchableOpacity>
+              <Button variant="ghost" onPress={() => onNavigate('index')} className="p-2 rounded-lg">
+                ←
+              </Button>
               <View>
                 <Text className="text-xl font-semibold text-gray-900">検索・履歴</Text>
                 <Text className="text-sm text-gray-500">{user.department}</Text>
               </View>
             </View>
             <View className="flex-row items-center space-x-2">
-              <Button variant="outline" size="sm" onPress={() => setShowFilters(!showFilters)}>
+              <Button variant="outline" size="sm" onPress={toggleFilters}>
                 <Text className="mr-2">🔧</Text>
                 <Text>フィルター</Text>
               </Button>
@@ -185,7 +86,7 @@ export function SearchPage({ user, onNavigate }: SearchPageProps) {
                   key={type.value}
                   variant={searchType === type.value ? 'default' : 'outline'}
                   size="sm"
-                  onPress={() => setSearchType(type.value as SearchType)}
+                  onPress={() => setSearchType(type.value as "all" | "incident" | "announcement")}
                 >
                   {type.label}
                 </Button>
@@ -257,7 +158,7 @@ export function SearchPage({ user, onNavigate }: SearchPageProps) {
             <Card key={item.id}>
               <View className="flex-row items-start space-x-3">
                 <View className="flex-shrink-0">
-                  {getTypeIcon(item.type)}
+                  <Text className="text-gray-500 text-lg">{getTypeIcon(item.type)}</Text>
                 </View>
                 <View className="flex-1">
                   <View className="flex-row items-start justify-between">

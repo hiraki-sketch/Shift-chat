@@ -1,22 +1,22 @@
 // app/_layout.tsx
-
 // ★ この2行は一番上（他の import より前）
 import 'react-native-gesture-handler';
 import 'react-native-reanimated';
 
 import { AuthProvider } from '@/contexts/AuthContext';
 import { Stack } from 'expo-router';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import '../globals.css';
 
 export default function RootLayout() {
   return (
-    <AuthProvider>
-      <Stack
-        screenOptions={{
-          headerShown: false,
-        
-        }}
-      >
+    <SafeAreaProvider>
+      <AuthProvider>
+        <Stack
+          screenOptions={{
+            headerShown: false,
+          }}
+        >
         <Stack.Screen name="index" options={{ headerShown: false }} />
         <Stack.Screen name="profile" options={{ headerShown: false }} />
         <Stack.Screen name="login" options={{ headerShown: false }} />
@@ -29,7 +29,8 @@ export default function RootLayout() {
         <Stack.Screen name="vacation" options={{ headerShown: false }} />
         <Stack.Screen name="work-schedule" options={{ headerShown: false }} />
         <Stack.Screen name="department-chat" options={{ headerShown: false }} />
-      </Stack>
-    </AuthProvider>
+        </Stack>
+      </AuthProvider>
+    </SafeAreaProvider>
   );
 }

@@ -1,6 +1,6 @@
 // scripts/prisma.ts  ← クライアントからは参照しない
-import 'dotenv/config';
 import { PrismaClient } from '@prisma/client';
+import 'dotenv/config';
 
 // ブラウザで誤って読み込まれたら即座に失敗させる保険
 if (typeof window !== 'undefined') {

@@ -8,15 +8,13 @@ import Animated, {
   useSharedValue,
 } from "react-native-reanimated";
 
-import { ResponsiveGrid } from "@/components/layout/ResponsiveGrid";
 import { LinearGradient } from "expo-linear-gradient";
-import {
-  Text,
-  TouchableOpacity,
-  View,
-  useWindowDimensions,
-} from "react-native";
+import { Text, View, useWindowDimensions } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { Button } from "./ui/button";
+import { Badge } from "./ui/badge";
+import { Card } from "./ui/card";
+import { ResponsiveGrid } from "./layout/ResponsiveGrid";
 
 interface HomeScreenProps {
   onNavigate: (page: string) => void;
@@ -169,69 +167,6 @@ export function HomeScreen({ onNavigate }: HomeScreenProps) {
     );
   };
 
-  // ---- UI ラッパ ----
-  const Button = ({
-    children,
-    onPress,
-    variant = "default",
-    className = "",
-  }: {
-    children: React.ReactNode;
-    onPress?: () => void;
-    variant?: "default" | "outline" | "secondary";
-    className?: string;
-  }) => (
-    <TouchableOpacity
-      onPress={onPress}
-      className={[
-        "rounded-xl px-6 py-3 items-center justify-center",
-        variant === "outline" ? "border border-slate-300 bg-transparent" : "",
-        variant === "secondary"
-          ? "bg-white/10 border border-white/30"
-          : "",
-        variant === "default" ? "bg-green-500" : "",
-        className,
-      ].join(" ")}
-    >
-      <Text
-        className={`${
-          variant === "outline" ? "text-slate-700" : "text-white"
-        } text-base font-medium`}
-      >
-        {children}
-      </Text>
-    </TouchableOpacity>
-  );
-
-  const Badge = ({
-    children,
-    className = "",
-  }: {
-    children: React.ReactNode;
-    className?: string;
-  }) => (
-    <View
-      className={[
-        "px-3 py-1 rounded-full bg-blue-100 border border-blue-200",
-        className,
-      ].join(" ")}
-    >
-      <Text className="text-xs text-blue-800 font-medium">{children}</Text>
-    </View>
-  );
-
-  const Card = ({
-    children,
-    className = "",
-  }: {
-    children: React.ReactNode;
-    className?: string;
-  }) => (
-    <View className={["bg-white/90 rounded-2xl p-6", className].join(" ")}>
-      {children}
-    </View>
-  );
-
   return (
     <SafeAreaView className="flex-1">
       <Animated.ScrollView
@@ -251,20 +186,21 @@ export function HomeScreen({ onNavigate }: HomeScreenProps) {
                   <Text className="text-white text-lg">🏭</Text>
                 </View>
                 <Text className="text-xl font-bold text-slate-800">
-                  SHIFT-CHAT
+                  CHAT-MANAGE
                 </Text>
               </View>
               <View className="flex-row">
                 <Button
                   variant="outline"
                   onPress={() => onNavigate("login")}
-                  className="mr-3"
+                  className="mr-3 rounded-xl border-slate-300"
                 >
                   ログイン
                 </Button>
                 <Button
                   variant="default"
                   onPress={() => onNavigate("signup")}
+                  className="bg-green-500"
                 >
                   サインアップ
                 </Button>
@@ -275,13 +211,13 @@ export function HomeScreen({ onNavigate }: HomeScreenProps) {
 
         {/* ===== ヒーロー（LinearGradient 使用） ===== */}
         <LinearGradient
-          colors={["#ffffff", "#eff6ff"]}
+          colors={["#3b82f6", "#eff6ff"]}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
         >
           <View className="py-14 px-5 items-center">
            
-              <Badge className="mb-4">交代勤務用チャットツール</Badge>
+              <Badge className="mb-2">交代勤務用チャットツール</Badge>
            
 
          
@@ -420,7 +356,7 @@ export function HomeScreen({ onNavigate }: HomeScreenProps) {
             業務効率向上
           </Text>
           <Text className="text-xs text-slate-600 mb-5">
-            導入企業の平均効果
+            
           </Text>
 
           <ResponsiveGrid

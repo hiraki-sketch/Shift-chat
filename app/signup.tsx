@@ -1,5 +1,5 @@
 import { LoginScreen } from "../components/LoginScreen";
 
 export default function Signup() {
-    return <LoginScreen />;
+    return <LoginScreen initialIsSignUp={true} />;
 }

@@ -1,7 +1,7 @@
 // components/layout/ResponsiveGrid.tsx
-import { useCols } from "@/hooks/useResponsive";
 import React, { useCallback, useState } from "react";
 import { LayoutChangeEvent, PixelRatio, View, ViewProps, ViewStyle } from "react-native";
+import { useCols } from "../../hooks/useResponsive";
 
 /** children を cols 個に自動整列（親の実寸幅で計算） */
 export function ResponsiveGrid({

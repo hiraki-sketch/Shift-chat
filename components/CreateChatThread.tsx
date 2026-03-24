@@ -1,149 +1,43 @@
-import { ResponsiveGrid } from "@/components/layout/ResponsiveGrid";
-import { useState } from 'react';
-import { ScrollView, Switch, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Alert, ScrollView, Switch, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from "react-native-safe-area-context";
-import { Shift, Thread, User } from '../types';
+import { User } from '../types';
+import { useCreateChatThreadManagement } from "../src/hooks/useCreateChatThreadManagement";
+import { ResponsiveGrid } from "./layout/ResponsiveGrid";
+import { Badge } from "./ui/badge";
+import { Button } from "./ui/button";
+import { Card } from "./ui/card";
+import { Input } from "./ui/input";
+import { Label } from "./ui/label";
 interface CreateChatThreadProps {
   user: User;
   onNavigate: (page: string) => void;
 }
 
 export function CreateChatThread({ user, onNavigate }: CreateChatThreadProps) {
-  const [title, setTitle] = useState('');
-  const [description, setDescription] = useState('');
-  const [selectedShift, setSelectedShift] = useState<Shift | 'all'>('all');
-  const [isPublic, setIsPublic] = useState(true);
-  const [allowFileSharing, setAllowFileSharing] = useState(true);
-  const [notifyMembers, setNotifyMembers] = useState(true);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-
-  const shifts: (Shift | 'all')[] = ['all', '1勤', '2勤', '3勤'];
-
-  const getShiftText = (shift: Shift | 'all') => {
-    switch (shift) {
-      case 'all': return '全勤務帯';
-      case '1勤': return '1勤';
-      case '2勤': return '2勤';
-      case '3勤': return '3勤';
-      default: return '不明';
-    }
-  };
-
-  const getShiftColor = (shift: Shift | 'all') => {
-    switch (shift) {
-      case 'all': return 'bg-gray-100';
-      case '1勤': return 'bg-blue-100';
-      case '2勤': return 'bg-green-100';
-      case '3勤': return 'bg-purple-100';
-      default: return 'bg-gray-100';
-    }
-  };
-
-  const handleSubmit = async () => {
-    if (!title.trim()) {
-      alert('チャットタイトルを入力してください');
-      return;
-    }
-
-    setIsSubmitting(true);
-
-    const newThread: Thread = {
-      id: Date.now().toString(),
-      title: title.trim(),
-      department: user.department,
-      shift: selectedShift === 'all' ? undefined : selectedShift,
-      createdBy: user.displayName,
-      createdAt: new Date().toISOString(),
-      messageCount: 0
-    };
-
-    // 実際の実装では、ここでSupabaseにデータを送信
-    console.log('新しいチャットスレッド:', {
-      ...newThread,
-      description,
-      isPublic,
-      allowFileSharing,
-      notifyMembers
-    });
-
-    setTimeout(() => {
-      setIsSubmitting(false);
-      alert('チャットスレッドを作成しました');
-      onNavigate('chat-threads');
-    }, 1000);
-  };
-
-  const handleCancel = () => {
-    if (title.trim() || description.trim()) {
-      if (confirm('入力内容が破棄されますが、よろしいですか？')) {
-        onNavigate('chat-threads');
-      }
-    } else {
-      onNavigate('chat-threads');
-    }
-  };
-
-  // プリセットテンプレート
-  const templates = [
-    {
-      title: '日次引き継ぎ - {shift}',
-      description: '勤務帯の引き継ぎ事項や注意事項を共有するためのチャットです。',
-      shift: '1勤' as Shift
-    },
-    {
-      title: '設備点検連絡',
-      description: '設備の点検状況や異常の報告・対応を行うためのチャットです。',
-      shift: 'all' as const
-    },
-    {
-      title: '品質管理情報',
-      description: '品質チェックの結果や改善提案を共有するためのチャットです。',
-      shift: 'all' as const
-    },
-    {
-      title: '安全管理連絡',
-      description: '安全に関する情報共有や事故報告を行うためのチャットです。',
-      shift: 'all' as const
-    }
-  ];
-
-  const applyTemplate = (template: typeof templates[0]) => {
-    const shiftText = template.shift === 'all' ? '全勤務帯' : template.shift;
-    setTitle(template.title.replace('{shift}', shiftText));
-    setDescription(template.description);
-    setSelectedShift(template.shift);
-  };
-
-  // シンプルなUIラッパ
-  const Card = ({ children, className = "" }: any) => (
-    <View className={`bg-card/80 rounded-2xl border border-border p-4 ${className}`}>
-      {children}
-    </View>
-  );
-
-  const Button = ({ children, onPress, variant = "default", className = "" }: any) => (
-    <TouchableOpacity
-      onPress={onPress}
-      className={[
-        "rounded-xl px-4 py-3 items-center justify-center",
-        variant === "outline" ? "border border-border bg-transparent" : "",
-        variant === "default" ? "bg-primary" : "",
-        className,
-      ].join(" ")}
-    >
-      <Text className={`${variant === "outline" ? "text-foreground" : "text-white"} text-base font-medium`}>
-        {children}
-      </Text>
-    </TouchableOpacity>
-  );
-
-  const Badge = ({ children, className = "" }: any) => (
-    <View className={`px-2 py-1 rounded-md bg-muted ${className}`}>
-      <Text className="text-xs text-foreground font-medium">
-        {children}
-      </Text>
-    </View>
-  );
+  const { state, data, derived, utils, actions } = useCreateChatThreadManagement(user);
+  const {
+    title,
+    description,
+    selectedShift,
+    isPublic,
+    allowFileSharing,
+    notifyMembers,
+    isSubmitting,
+  } = state;
+  const { shifts, templates } = data;
+  const { canSubmit } = derived;
+  const { getShiftText, getShiftColor } = utils;
+  const {
+    setTitle,
+    setDescription,
+    setSelectedShift,
+    setIsPublic,
+    setAllowFileSharing,
+    setNotifyMembers,
+    applyTemplate,
+    handleCancel,
+    handleSubmit,
+  } = actions;
 
   return (
     <SafeAreaView className="flex-1">
@@ -152,12 +46,9 @@ export function CreateChatThread({ user, onNavigate }: CreateChatThreadProps) {
       <View className="bg-card border-b border-border">
         <View className="px-5 py-4">
           <View className="flex-row items-center space-x-4">
-            <TouchableOpacity
-              onPress={handleCancel}
-              className="p-2 rounded-xl"
-            >
-              <Text className="text-2xl">←</Text>
-            </TouchableOpacity>
+            <Button variant="ghost" onPress={handleCancel} className="p-2 rounded-xl">
+              ←
+            </Button>
             <View>
               <Text className="text-xl font-semibold text-foreground">新しいチャット作成</Text>
               <Text className="text-sm text-muted-foreground">{user.department}</Text>
@@ -179,24 +70,24 @@ export function CreateChatThread({ user, onNavigate }: CreateChatThreadProps) {
               </View>
               <View className="space-y-4">
                 <View className="space-y-2">
-                  <Text className="text-sm font-medium text-foreground">チャットタイトル *</Text>
-                  <TextInput
+                  <Label>チャットタイトル *</Label>
+                  <Input
                     value={title}
                     onChangeText={setTitle}
                     placeholder="例：1勤 日次引き継ぎ"
-                    className="border border-border rounded-xl px-4 py-3 text-foreground bg-background"
+                    className="rounded-xl px-4 py-3"
                   />
                 </View>
 
                 <View className="space-y-2">
-                  <Text className="text-sm font-medium text-foreground">説明</Text>
-                  <TextInput
+                  <Label>説明</Label>
+                  <Input
                     value={description}
                     onChangeText={setDescription}
                     placeholder="このチャットの目的や使用方法を説明してください"
                     multiline
                     numberOfLines={3}
-                    className="border border-border rounded-xl px-4 py-3 text-foreground bg-background"
+                    className="rounded-xl px-4 py-3"
                   />
                 </View>
 
@@ -255,15 +146,33 @@ export function CreateChatThread({ user, onNavigate }: CreateChatThreadProps) {
 
             <View className="flex-row space-x-4">
               <Button
-                onPress={handleCancel}
+                onPress={() => {
+                  const res = handleCancel();
+                  if (!res.ok) {
+                    Alert.alert(res.title, res.message, [
+                      { text: "キャンセル", style: "cancel" },
+                      {
+                        text: "破棄して戻る",
+                        style: "destructive",
+                        onPress: () => onNavigate("chat-threads"),
+                      },
+                    ]);
+                    return;
+                  }
+                  onNavigate("chat-threads");
+                }}
                 variant="outline"
                 className="flex-1"
               >
                 キャンセル
               </Button>
               <Button
-                onPress={handleSubmit}
-                disabled={isSubmitting || !title.trim()}
+                onPress={async () => {
+                  const res = await handleSubmit();
+                  Alert.alert(res.title, res.message);
+                  if (res.ok) onNavigate("chat-threads");
+                }}
+                disabled={isSubmitting || !canSubmit}
                 className="flex-1"
               >
                 {isSubmitting ? '作成中...' : 'チャットを作成'}

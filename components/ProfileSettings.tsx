@@ -1,10 +1,13 @@
 //profile-settings.tsx
-import { supabase } from '@/lib/supabase';
-import { useRouter } from 'expo-router';
-import { useState } from 'react';
-import { ActivityIndicator, Alert, ScrollView, Switch, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, ScrollView, Switch, Text, View } from 'react-native';
 import { SafeAreaView } from "react-native-safe-area-context";
 import { User } from '../types';
+import { useProfileSettingsManagement } from "../src/hooks/useProfileSettingsManagement";
+import { Badge } from './ui/badge';
+import { Button } from './ui/button';
+import { Card } from './ui/card';
+import { Input } from './ui/input';
+import { Label } from './ui/label';
 
 
 interface ProfileSettingsProps {
@@ -14,110 +17,31 @@ interface ProfileSettingsProps {
 }
 
 export function ProfileSettings({ user, onNavigate, onLogout }: ProfileSettingsProps) {
-  const router = useRouter();
-  const [loadingLogout, setLoadingLogout] = useState(false);
-  const [displayName, setDisplayName] = useState(user.displayName);
-  const [email, setEmail] = useState(user.email);
-  const [department, setDepartment] = useState(user.department);
-  const [notificationsEnabled, setNotificationsEnabled] = useState(true);
-  const [emailNotifications, setEmailNotifications] = useState(true);
-
-  const handleSaveProfile = () => {
-    console.log('プロフィール更新:', { displayName, email, department });
-    alert('プロフィールを更新しました');
-  };
-
-  const handleExportData = () => {
-    console.log('データエクスポート');
-    alert('データエクスポートを開始しました。完了後にダウンロードリンクが送信されます。');
-  };
-
-  const getRoleText = (role: string) => {
-    switch (role) {
-      case 'admin': return '管理者';
-      case 'manager': return 'リーダー';
-      case 'user': return '一般ユーザー';
-      default: return '不明';
-    }
-  };
-
-  const getRoleColor = (role: string) => {
-    switch (role) {
-      case 'admin': return 'bg-red-500';
-      case 'manager': return 'bg-blue-500';
-      case 'user': return 'bg-gray-500';
-      default: return 'bg-gray-300';
-    }
-  };
-
-  // シンプルなUIラッパ
-  const Card = ({ children, className = "" }: any) => (
-    <View className={`bg-card rounded-2xl border border-border p-4 ${className}`}>
-      {children}
-    </View>
-  );
-
-  const Button = ({ children, onPress, variant = "default", className = "", disabled = false }: any) => (
-    <TouchableOpacity
-      onPress={onPress}
-      disabled={disabled}
-      className={[
-        "rounded-xl px-4 py-3 items-center justify-center",
-        variant === "outline" ? "border border-border bg-transparent" : "",
-        variant === "destructive" ? "bg-red-500" : "",
-        variant === "default" ? "bg-primary" : "",
-        disabled ? "opacity-50" : "",
-        className,
-      ].join(" ")}
-    >
-      <Text className={`${
-        variant === "outline" ? "text-foreground" : 
-        variant === "destructive" ? "text-white" : 
-        "text-white"
-      } text-base font-medium`}>
-        {children}
-      </Text>
-    </TouchableOpacity>
-  );
-
-  const Input = ({ value, onChangeText, placeholder, secureTextEntry = false }: any) => (
-    <TextInput
-      value={value}
-      onChangeText={onChangeText}
-      placeholder={placeholder}
-      secureTextEntry={secureTextEntry}
-      className="border border-border rounded-lg px-3 py-2 text-foreground bg-background"
-      placeholderTextColor="#6b7280"
-    />
-  );
-
-  const Label = ({ children, className = "" }: any) => (
-    <Text className={`text-sm font-medium text-foreground mb-2 ${className}`}>
-      {children}
-    </Text>
-  );
-
-  const Badge = ({ children, variant = "secondary", className = "" }: any) => (
-    <View className={`px-2 py-1 rounded-md ${variant === "secondary" ? "bg-muted" : "bg-primary"} ${className}`}>
-      <Text className="text-xs text-foreground font-medium">
-        {children}
-      </Text>
-    </View>
-  );
-  const handleLogoutInternal = async () => {
-    if (onLogout) {
-      return onLogout();
-    }
-    try {
-      setLoadingLogout(true);
-      await supabase.auth.signOut();
-      router.replace('/login');
-    } catch {
-      Alert.alert('ログアウトに失敗しました。もう一度お試しください');
-    } finally {
-      setLoadingLogout(false);
-    }
-  };
+  const { state, utils, actions } = useProfileSettingsManagement({
+    user,
+    onNavigate,
+    onLogout,
+  });
+  const {
+    loadingLogout,
+    loadingSave,
+    displayName,
+    email,
+    department,
+    notificationsEnabled,
+    emailNotifications,
+  } = state;
+  const { getRoleText, getRoleColor } = utils;
+  const {
+    setDisplayName,
+    setEmail,
+    setDepartment,
+    setNotificationsEnabled,
+    setEmailNotifications,
+    handleSaveProfile,
+    handleExportData,
+    handleLogoutInternal,
+  } = actions;
 
   return (
     <SafeAreaView className="flex-1">
@@ -127,12 +51,13 @@ export function ProfileSettings({ user, onNavigate, onLogout }: ProfileSettingsP
         <View className="px-5 py-4">
           <View className="flex-row items-center justify-between">
             <View className="flex-row items-center space-x-4">
-              <TouchableOpacity
+              <Button
+                variant="ghost"
                 onPress={() => onNavigate('index')}
                 className="p-2 rounded-xl"
               >
-                <Text className="text-2xl">←</Text>
-              </TouchableOpacity>
+                ←
+              </Button>
               <View>
                 <Text className="text-xl font-semibold text-foreground">設定・プロフィール</Text>
                 <Text className="text-sm text-muted-foreground">{user.displayName}</Text>
@@ -140,7 +65,10 @@ export function ProfileSettings({ user, onNavigate, onLogout }: ProfileSettingsP
             </View>
             <Button
               variant="outline"
-              onPress={handleLogoutInternal}
+              onPress={async () => {
+                const res = await handleLogoutInternal();
+                if (!res.ok) Alert.alert(res.title, res.message);
+              }}
               className="border-red-500"
             >
               {loadingLogout ? (
@@ -155,7 +83,7 @@ export function ProfileSettings({ user, onNavigate, onLogout }: ProfileSettingsP
 
       <View className="p-5 space-y-6">
         {/* プロフィール情報 */}
-        <Card>
+        <Card className="rounded-2xl p-4">
           <View className="mb-4">
             <Text className="text-lg font-semibold flex-row items-center">
               <Text className="mr-2">👤</Text>
@@ -195,15 +123,28 @@ export function ProfileSettings({ user, onNavigate, onLogout }: ProfileSettingsP
              </View>
             
             <View className="items-end">
-              <Button onPress={handleSaveProfile}>
-                プロフィールを更新
+              <Button
+                onPress={async () => {
+                  const res = await handleSaveProfile();
+                  Alert.alert(res.title, res.message);
+                }}
+                disabled={loadingSave}
+              >
+                {loadingSave ? (
+                  <View className="flex-row items-center">
+                    <ActivityIndicator size="small" color="#fff" className="mr-2" />
+                    <Text className="text-white">更新中...</Text>
+                  </View>
+                ) : (
+                  'プロフィールを更新'
+                )}
               </Button>
             </View>
           </View>
         </Card>
 
         {/* 通知設定 */}
-        <Card>
+        <Card className="rounded-2xl p-4">
           <View className="mb-4">
             <Text className="text-lg font-semibold flex-row items-center">
               <Text className="mr-2">🔔</Text>
@@ -242,7 +183,7 @@ export function ProfileSettings({ user, onNavigate, onLogout }: ProfileSettingsP
         </Card>
 
         {/* セキュリティ */}
-        <Card>
+        <Card className="rounded-2xl p-4">
           <View className="mb-4">
             <Text className="text-lg font-semibold flex-row items-center">
               <Text className="mr-2">🛡️</Text>
@@ -265,7 +206,7 @@ export function ProfileSettings({ user, onNavigate, onLogout }: ProfileSettingsP
         </Card>
 
         {/* データエクスポート */}
-        <Card>
+        <Card className="rounded-2xl p-4">
           <View className="mb-4">
             <Text className="text-lg font-semibold flex-row items-center">
               <Text className="mr-2">📥</Text>
@@ -280,7 +221,13 @@ export function ProfileSettings({ user, onNavigate, onLogout }: ProfileSettingsP
                   投稿した異常報告やメッセージのデータをダウンロードできます
                 </Text>
               </View>
-              <Button variant="outline" onPress={handleExportData}>
+              <Button
+                variant="outline"
+                onPress={() => {
+                  const res = handleExportData();
+                  Alert.alert(res.title, res.message);
+                }}
+              >
                 エクスポート
               </Button>
             </View>

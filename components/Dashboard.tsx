@@ -1,16 +1,13 @@
 // components/Dashboard.tsx
-import { ResponsiveGrid } from "@/components/layout/ResponsiveGrid";
-import { useBreakpoint } from "@/hooks/useResponsive";
 import { LinearGradient } from "expo-linear-gradient";
 import { cssInterop } from "nativewind";
-import {
-  ScrollView,
-  Text,
-  TouchableOpacity,
-  View,
-} from "react-native";
+import { ScrollView, Text, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { useBreakpoint } from "../hooks/useResponsive";
+import { useDashboardManagement } from "../src/hooks/useDashboardManagement";
 import { Shift, User } from "../types";
+import { ResponsiveGrid } from "./layout/ResponsiveGrid";
+import { Button } from "./ui/button";
 import {
   AlertTriangle,
   Bell,
@@ -23,31 +20,6 @@ import {
 // LinearGradient を className 対応にする
 cssInterop(LinearGradient, { className: "style" });
 const G = LinearGradient;
-
-// 最小UIラッパ
-const Button = ({
-  children,
-  onPress,
-  variant = "default",
-  className = "",
-}: any) => (
-  <TouchableOpacity
-    onPress={onPress}
-    className={[
-      "rounded-xl px-4 py-3 items-center justify-center",
-      variant === "outline" ? "border border-gray-300 bg-transparent" : "",
-      variant === "ghost" ? "bg-transparent" : "",
-      variant === "default" ? "bg-blue-600" : "",
-      className,
-    ].join(" ")}
-  >
-    <Text
-      className={`${variant === "default" ? "text-white" : "text-gray-900"} text-base`}
-    >
-      {children}
-    </Text>
-  </TouchableOpacity>
-);
 
 type DashboardProps = {
   user: User;
@@ -62,27 +34,11 @@ export function Dashboard({
   onShiftChange,
   onNavigate,
 }: DashboardProps) {
-  const shifts: Shift[] = ["1勤", "2勤", "3勤"];
+  const { data, utils } = useDashboardManagement(user);
+  const { shifts, unreadIncidents, recentAnnouncements } = data;
+  const { sevDot } = utils;
   const { bp } = useBreakpoint();
   const narrow = bp === "sm";
-
-  const unreadIncidents = [
-    { id: "1", title: "機械異常音発生", severity: "high", shift: "2勤", time: "14:30" },
-    { id: "2", title: "品質チェック要注意", severity: "medium", shift: "1勤", time: "10:15" },
-  ];
-  const recentAnnouncements = [
-    { id: "1", title: "来週の保守点検について", time: "昨日 16:00", pinned: true },
-    { id: "2", title: "安全研修のお知らせ", time: "2日前", pinned: false },
-  ];
-
-  const sevDot = (s: string) =>
-    s === "high"
-      ? "bg-red-500"
-      : s === "medium"
-      ? "bg-yellow-500"
-      : s === "low"
-      ? "bg-green-500"
-      : "bg-gray-400";
 
   return (
     <SafeAreaView className="flex-1">
@@ -106,7 +62,7 @@ export function Dashboard({
           <View className="px-5 py-4">
             <View className="flex-row items-center justify-between">
               <View>
-                <Text className="text-2xl font-semibold text-white">Factory Note</Text>
+                <Text className="text-2xl font-semibold text-white">CHAT‐MANAGE</Text>
                 <Text className="text-base text-blue-100">
                   {user.displayName} - {user.department}
                 </Text>
@@ -145,12 +101,11 @@ export function Dashboard({
                 <Button
                   key={shift}
                   variant={active ? "default" : "outline"}
+                  size="md"
                   onPress={() => onShiftChange(shift)}
-                  className={`flex-1 ${active ? "bg-white" : "bg-white/20 border-white"}`}
+                  className={`flex-1 ${active ? "bg-blue-500 border-blue-500" : "bg-white/20 border-white"}`}
                 >
-                  <Text className={`${active ? "text-emerald-600" : "text-white"} font-semibold`}>
-                    {shift}
-                  </Text>
+                  {shift}
                 </Button>
               );
             })}
@@ -210,10 +165,11 @@ export function Dashboard({
               ))}
               <Button
                 variant="outline"
+                size="md"
                 onPress={() => onNavigate("search")}
                 className="bg-white border-red-300"
               >
-                <Text className="text-red-600 font-medium">すべて見る</Text>
+                すべて見る
               </Button>
             </View>
           </G>
@@ -245,10 +201,11 @@ export function Dashboard({
               ))}
               <Button
                 variant="outline"
+                size="md"
                 onPress={() => onNavigate("department-chat")}
                 className="bg-white border-blue-300"
               >
-                <Text className="text-blue-600 font-medium">部署連絡を見る</Text>
+                部署連絡を見る
               </Button>
             </View>
           </G>
@@ -263,37 +220,33 @@ export function Dashboard({
         >
           <Text className="text-xl font-semibold mb-4 text-purple-800">クイックアクション</Text>
           <ResponsiveGrid pad={0} maxCols={{ sm:1, md:2, lg:3, xl:4, "2xl":4 }}>
-            <Button
-              variant="outline"
-              className="h-28 items-center justify-center bg-white border-red-200"
+            <TouchableOpacity
+              className="h-28 items-center justify-center bg-white border border-red-200 rounded-xl"
               onPress={() => onNavigate("incident-report")}
             >
               <AlertTriangle size={32} color="#ef4444" />
               <Text className="text-lg mt-2 text-red-600 font-medium">異常報告</Text>
-            </Button>
-            <Button
-              variant="outline"
-              className="h-28 items-center justify-center bg-white border-blue-200"
+            </TouchableOpacity>
+            <TouchableOpacity
+              className="h-28 items-center justify-center bg-white border border-blue-200 rounded-xl"
               onPress={() => onNavigate("chat-threads")}
             >
               <MessageSquare size={32} color="#3b82f6" />
               <Text className="text-lg mt-2 text-blue-600 font-medium">チャット</Text>
-            </Button>
-            <Button
-              variant="outline"
-              className="h-28 items-center justify-center bg-white border-green-200"
+            </TouchableOpacity>
+            <TouchableOpacity
+              className="h-28 items-center justify-center bg-white border border-green-200 rounded-xl"
               onPress={() => onNavigate("search")}
             >
               <Search size={32} color="#22c55e" />
               <Text className="text-lg mt-2 text-green-600 font-medium">検索</Text>
-            </Button>
-            <Button
-              variant="outline"
-              className="h-28 items-center justify-center bg-white border-purple-200"
+            </TouchableOpacity>
+            <TouchableOpacity
+              className="h-28 items-center justify-center bg-white border border-purple-200 rounded-xl"
             >
               <FileText size={32} color="#a855f7" />
               <Text className="text-lg mt-2 text-purple-600 font-medium">PDF出力</Text>
-            </Button>
+            </TouchableOpacity>
           </ResponsiveGrid>
         </G>
 
@@ -306,30 +259,27 @@ export function Dashboard({
         >
           <Text className="text-xl font-semibold mb-4 text-amber-800">勤務管理</Text>
           <ResponsiveGrid pad={0} maxCols={{ sm:1, md:3, lg:3, xl:3, "2xl":3 }}>
-            <Button
-              variant="outline"
-              className="h-28 items-center justify-center bg-white border-indigo-200"
+            <TouchableOpacity
+              className="h-28 items-center justify-center bg-white border border-indigo-200 rounded-xl"
               onPress={() => onNavigate("work-schedule")}
             >
               <Text className="text-2xl">📅</Text>
               <Text className="text-lg mt-2 text-indigo-600 font-medium">勤務表</Text>
-            </Button>
-            <Button
-              variant="outline"
-              className="h-28 items-center justify-center bg-white border-green-200"
+            </TouchableOpacity>
+            <TouchableOpacity
+              className="h-28 items-center justify-center bg-white border border-green-200 rounded-xl"
               onPress={() => onNavigate("attendance")}
             >
               <Text className="text-2xl">⏰</Text>
               <Text className="text-lg mt-2 text-green-600 font-medium">出勤管理</Text>
-            </Button>
-            <Button
-              variant="outline"
-              className="h-28 items-center justify-center bg-white border-orange-200"
+            </TouchableOpacity>
+            <TouchableOpacity
+              className="h-28 items-center justify-center bg-white border border-orange-200 rounded-xl"
               onPress={() => onNavigate("vacation")}
             >
               <Text className="text-2xl">✈️</Text>
               <Text className="text-lg mt-2 text-orange-600 font-medium">有給休暇</Text>
-            </Button>
+            </TouchableOpacity>
           </ResponsiveGrid>
         </G>
 

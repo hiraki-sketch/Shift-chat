@@ -10,8 +10,10 @@
     "types": [
       "nativewind/types"
     ],
+    "baseUrl": ".",
     "paths": {
       "@/*": [
+        "./src/*",
         "./*"
       ]
     }
@@ -19,6 +21,7 @@
   "include": [
     "**/*.ts",
     "**/*.tsx",
-    "nativewind-env.d.ts"
+    "nativewind-env.d.ts",
+    "env.d.ts"
   ]
 }

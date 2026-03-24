@@ -1,98 +1,30 @@
-import { ResponsiveGrid } from "@/components/layout/ResponsiveGrid";
 import { ArrowLeft, Bell, Clock, Pin, Send, User as UserIcon } from 'lucide-react-native';
-import { useState } from 'react';
-import { ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Shift, User } from '../types';
+import { User } from '../types';
+import { useDepartmentChatManagement } from "../src/hooks/useDepartmentChatManagement";
+import { ResponsiveGrid } from "./layout/ResponsiveGrid";
 import { Badge } from './ui/badge';
 import { Button } from './ui/button';
 import { Card } from './ui/card';
+import { Input } from './ui/input';
 interface DepartmentChatProps {
   user: User;
   onNavigate: (page: string) => void;
 }
 
-interface Announcement {
-  id: string;
-  title: string;
-  content: string;
-  author: string;
-  createdAt: string;
-  pinned: boolean;
-  priority: 'high' | 'medium' | 'low';
-  shift?: Shift;
-}
-
 export function DepartmentChat({ user, onNavigate }: DepartmentChatProps) {
-  const [newAnnouncement, setNewAnnouncement] = useState('');
-  const [isComposing, setIsComposing] = useState(false);
-
-  // モックデータ
-  const announcements: Announcement[] = [
-    {
-      id: '1',
-      title: '来週の保守点検について',
-      content: '来週月曜日から水曜日まで、機械の定期保守点検を実施します。作業時間は通常通りですが、一部のラインが停止する可能性があります。',
-      author: '保守担当 佐藤',
-      createdAt: '2024-12-20 16:00',
-      pinned: true,
-      priority: 'high',
-      shift: '1勤'
-    },
-    {
-      id: '2',
-      title: '安全研修のお知らせ',
-      content: '来月の安全研修の日程が決定しました。全員参加必須です。詳細は後日連絡します。',
-      author: '安全担当 田中',
-      createdAt: '2024-12-19 14:30',
-      pinned: false,
-      priority: 'medium'
-    },
-    {
-      id: '3',
-      title: '年末年始の勤務について',
-      content: '年末年始の勤務スケジュールを確認してください。特別勤務手当が支給されます。',
-      author: '人事部 山田',
-      createdAt: '2024-12-18 10:00',
-      pinned: true,
-      priority: 'high'
-    },
-    {
-      id: '4',
-      title: '品質管理の改善提案',
-      content: '品質チェックの効率化について、皆様からのご意見をお待ちしています。',
-      author: '品質管理 鈴木',
-      createdAt: '2024-12-17 15:45',
-      pinned: false,
-      priority: 'low'
-    }
-  ];
-
-  const getPriorityColor = (priority: string) => {
-    switch (priority) {
-      case 'high': return 'bg-red-500';
-      case 'medium': return 'bg-yellow-500';
-      case 'low': return 'bg-green-500';
-      default: return 'bg-gray-500';
-    }
-  };
-
-  const getPriorityText = (priority: string) => {
-    switch (priority) {
-      case 'high': return '重要';
-      case 'medium': return '普通';
-      case 'low': return '軽微';
-      default: return '不明';
-    }
-  };
-
-  const handleSendAnnouncement = () => {
-    if (!newAnnouncement.trim()) return;
-    
-    console.log('新しい部署連絡:', newAnnouncement);
-    setNewAnnouncement('');
-    setIsComposing(false);
-  };
+  const { state, data, derived, utils, actions } = useDepartmentChatManagement(user);
+  const { newAnnouncement, isComposing } = state;
+  const { announcements } = data;
+  const { canSend } = derived;
+  const { getPriorityColor, getPriorityText } = utils;
+  const {
+    setNewAnnouncement,
+    handleToggleCompose,
+    handleCancelCompose,
+    handleSendAnnouncement,
+  } = actions;
 
   return (
     <SafeAreaView className="flex-1">
@@ -102,17 +34,17 @@ export function DepartmentChat({ user, onNavigate }: DepartmentChatProps) {
         <View className="px-5 py-4">
           <View className="flex-row items-center justify-between">
             <View className="flex-row items-center gap-3">
-              <TouchableOpacity onPress={() => onNavigate('index')} className="p-2 rounded-xl">
+              <Button variant="ghost" onPress={() => onNavigate('index')} className="p-2 rounded-xl">
                 <ArrowLeft size={22} color="#64748b" />
-              </TouchableOpacity>
+              </Button>
               <View>
                 <Text className="text-xl font-semibold text-foreground">部署連絡</Text>
                 <Text className="text-sm text-muted-foreground">{user.department}</Text>
               </View>
             </View>
-            <TouchableOpacity onPress={() => setIsComposing(!isComposing)} className="p-2 rounded-xl">
+            <Button variant="ghost" onPress={handleToggleCompose} className="p-2 rounded-xl">
               <Bell size={22} color="#64748b" />
-            </TouchableOpacity>
+            </Button>
           </View>
         </View>
       </View>
@@ -170,25 +102,24 @@ export function DepartmentChat({ user, onNavigate }: DepartmentChatProps) {
       {isComposing && (
         <View className="bg-card border-t border-border p-4">
           <View className="gap-3">
-            <TextInput
+            <Input
               value={newAnnouncement}
               onChangeText={setNewAnnouncement}
               placeholder="部署連絡を入力してください..."
               multiline
-              className="bg-muted rounded-xl p-3 text-foreground min-h-[80px]"
-              placeholderTextColor="#64748b"
+              className="bg-muted rounded-xl p-3 min-h-[80px]"
             />
             <View className="flex-row gap-3">
               <Button 
                 variant="outline" 
-                onPress={() => setIsComposing(false)}
+                onPress={handleCancelCompose}
                 className="flex-1"
               >
                 <Text>キャンセル</Text>
               </Button>
               <Button 
                 onPress={handleSendAnnouncement}
-                disabled={!newAnnouncement.trim()}
+                disabled={!canSend}
                 className="flex-1"
               >
                 <Send size={16} color="white" />
