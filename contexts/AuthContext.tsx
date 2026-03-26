@@ -31,6 +31,40 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<AppUser | null>(null);
   const [loading, setLoading] = useState(true);
 
+  const resolveDepartmentIdByName = useCallback(
+    async (departmentName?: string | null): Promise<string | null> => {
+      if (!departmentName) return null;
+      const { data, error } = await supabase
+        .from("departments")
+        .select("id")
+        .eq("name", departmentName)
+        .maybeSingle();
+      if (error) {
+        console.warn("[Auth] 部署IDの解決に失敗", error);
+        return null;
+      }
+      return data?.id ?? null;
+    },
+    []
+  );
+
+  const resolveDepartmentNameById = useCallback(
+    async (departmentId?: string | null): Promise<string | null> => {
+      if (!departmentId) return null;
+      const { data, error } = await supabase
+        .from("departments")
+        .select("name")
+        .eq("id", departmentId)
+        .maybeSingle();
+      if (error) {
+        console.warn("[Auth] 部署名の解決に失敗", error);
+        return null;
+      }
+      return data?.name ?? null;
+    },
+    []
+  );
+
   /**
    * profilesテーブルにプロフィール行が無い場合に作る
    * - signUp時の user_metadata（display_name/department）から初期値を拾う想定
@@ -41,14 +75,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     const display_name =
       (supabaseUser.user_metadata?.display_name as string | undefined) ?? null;
-    const department =
+    const departmentName =
       (supabaseUser.user_metadata?.department as string | undefined) ?? null;
+    const departmentId = await resolveDepartmentIdByName(departmentName);
 
     const { error } = await supabase.from("profiles").insert({
       id: supabaseUser.id,
       email: supabaseUser.email,
       display_name,
-      department,
+      department_id: departmentId,
     });
 
     if (error?.code === "23505") {
@@ -57,7 +92,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
     if (error) console.warn("[Auth] createProfileIfMissing: insert error", error);
     return { insertError: error };
-  }, []);
+  }, [resolveDepartmentIdByName]);
 
   /*
    * 認証ユーザー(User) → DB(profilesテーブル)のプロフィールを取得して setUser する
@@ -70,7 +105,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       const { data, error } = await supabase
         .from("profiles")
-        .select("id,email,display_name,department")
+        .select("id,email,display_name,department_id")
         .eq("id", supabaseUser.id)
         .maybeSingle();
 
@@ -91,7 +126,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         const retry = await supabase
           .from("profiles")
-          .select("id,email,display_name,department")
+          .select("id,email,display_name,department_id")
           .eq("id", supabaseUser.id)
           .maybeSingle();
 
@@ -100,11 +135,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           return;
         }
 
+        const retryDepartmentName = await resolveDepartmentNameById(
+          retry.data.department_id
+        );
         setUser({
           id: retry.data.id,
           email: retry.data.email,
           displayName: retry.data.display_name,
-          department: retry.data.department,
+          department: retryDepartmentName ?? "",
         });
         console.log("[Auth] fetchUserProfile: 作成後セット完了");
         return;
@@ -113,11 +151,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // プロフィールが存在するが、display_name や department が null の場合
       // user_metadata から更新を試みる
       const needsUpdate =
-        (!data.display_name || !data.department) &&
+        (!data.display_name || !data.department_id) &&
         (supabaseUser.user_metadata?.display_name || supabaseUser.user_metadata?.department);
 
       if (needsUpdate) {
         console.log("[Auth] fetchUserProfile: プロフィール更新が必要");
+        const metadataDepartmentName =
+          (supabaseUser.user_metadata?.department as string | undefined) ?? null;
+        const metadataDepartmentId = await resolveDepartmentIdByName(
+          metadataDepartmentName
+        );
         const { error: updateError } = await supabase
           .from("profiles")
           .update({
@@ -125,10 +168,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               data.display_name ||
               (supabaseUser.user_metadata?.display_name as string | undefined) ||
               null,
-            department:
-              data.department ||
-              (supabaseUser.user_metadata?.department as string | undefined) ||
-              null,
+            department_id: data.department_id || metadataDepartmentId || null,
           })
           .eq("id", supabaseUser.id);
 
@@ -138,16 +178,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           // 更新後、再取得
           const updated = await supabase
             .from("profiles")
-            .select("id,email,display_name,department")
+            .select("id,email,display_name,department_id")
             .eq("id", supabaseUser.id)
             .maybeSingle();
 
           if (updated.data) {
+            const updatedDepartmentName = await resolveDepartmentNameById(
+              updated.data.department_id
+            );
             setUser({
               id: updated.data.id,
               email: updated.data.email,
               displayName: updated.data.display_name,
-              department: updated.data.department,
+              department: updatedDepartmentName ?? "",
             });
             console.log("[Auth] fetchUserProfile: 更新後セット完了");
             return;
@@ -156,15 +199,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       // 取得できたらアプリ用の形に変換して state に保存
+      const departmentName = await resolveDepartmentNameById(data.department_id);
       setUser({
         id: data.id,
         email: data.email,
         displayName: data.display_name,
-        department: data.department,
+        department: departmentName ?? "",
       });
       console.log("[Auth] fetchUserProfile: セット完了", data.email);
     },
-    [createProfileIfMissing]
+    [createProfileIfMissing, resolveDepartmentIdByName, resolveDepartmentNameById]
   );
 
   useEffect(() => {

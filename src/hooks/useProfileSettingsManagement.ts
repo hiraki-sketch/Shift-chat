@@ -1,6 +1,6 @@
-import { useCallback, useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/lib/supabase";
+import { useCallback, useState } from "react";
 import type { User } from "../../types";
 
 type ActionResult = { ok: boolean; title: string; message: string };
@@ -59,11 +59,34 @@ export function useProfileSettingsManagement({
 
     setLoadingSave(true);
     try {
+      let departmentId: string | null = null;
+      const { data: departmentData, error: departmentError } = await supabase
+        .from("departments")
+        .select("id")
+        .eq("name", department)
+        .maybeSingle();
+      if (departmentError) {
+        console.error("部署IDの取得エラー:", departmentError);
+        return {
+          ok: false,
+          title: "エラー",
+          message: "部署情報の取得に失敗しました。",
+        };
+      }
+      departmentId = departmentData?.id ?? null;
+      if (!departmentId) {
+        return {
+          ok: false,
+          title: "エラー",
+          message: "指定された部署が見つかりません。",
+        };
+      }
+
       const { error } = await supabase
         .from("profiles")
         .update({
           display_name: displayName,
-          department,
+          department_id: departmentId,
           // email は認証側で管理されるため、ここでは更新しない
         })
         .eq("id", user.id);

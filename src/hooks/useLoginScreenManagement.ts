@@ -69,12 +69,26 @@ export function useLoginScreenManagement({
       const authUser = sessionData.session?.user;
       if (!authUser) return { hasSession: false };
 
+      let departmentId: string | null = null;
+      if (departmentValue) {
+        const { data: departmentData, error: departmentError } = await supabase
+          .from("departments")
+          .select("id")
+          .eq("name", departmentValue)
+          .maybeSingle();
+        if (departmentError) {
+          console.warn("部署IDの解決に失敗しました。", departmentError);
+        } else {
+          departmentId = departmentData?.id ?? null;
+        }
+      }
+
       const { error: upsertError } = await supabase.from("profiles").upsert(
         {
           id: authUser.id,
           email: authUser.email,
           display_name: displayNameValue,
-          department: departmentValue,
+          department_id: departmentId,
         },
         { onConflict: "id" }
       );
