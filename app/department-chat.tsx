@@ -30,8 +30,11 @@ export default function DepartmentChatPage() {
   const appUser: User = {
     id: user!.id,
     displayName: user!.displayName ?? "未設定ユーザー",
+    departmentId: user!.departmentId ?? "",
+    departmentName: user!.departmentName ?? user!.department ?? "未設定部署",
     department: user!.department ?? "未設定部署",
     email: user!.email ?? "",
+    role: user!.role,
   };
 
   const handleNavigate = (page: string) => {

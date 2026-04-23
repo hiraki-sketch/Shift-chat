@@ -1,13 +1,13 @@
 import { useRouter } from "expo-router";
-import { useState } from "react";
 import { ActivityIndicator, Text, View } from "react-native";
 import { IncidentReport } from "../components/IncidentReport";
 import { useRequireAuth } from "../src/hooks/useRequireAuth";
-import { Shift, User } from "../types";
+import { useShiftStore } from "../src/stores/useShiftStore";
+import { User } from "../types";
 
 export default function IncidentReportPage() {
   const router = useRouter();
-  const [shift] = useState<Shift>("1勤");
+  const selectedShift = useShiftStore((state) => state.selectedShift);
   const { status, user } = useRequireAuth("/login", 1500);
 
   if (status === "checking") {
@@ -32,14 +32,17 @@ export default function IncidentReportPage() {
   const appUser: User = {
     id: user!.id,
     displayName: user!.displayName ?? "未設定ユーザー",
+    departmentId: user!.departmentId ?? "",
+    departmentName: user!.departmentName ?? user!.department ?? "未設定部署",
     department: user!.department ?? "未設定部署",
     email: user!.email ?? "",
+    role: user!.role,
   };
 
   return (
     <IncidentReport
       user={appUser}
-      selectedShift={shift}
+      selectedShift={selectedShift}
       onNavigate={(page) => {
         const path = page === "index" ? "/" : `/${page}`;
         router.push(path as any);

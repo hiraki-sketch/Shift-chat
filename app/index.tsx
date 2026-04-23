@@ -1,15 +1,16 @@
 // app/index.tsx
 import { useRouter } from "expo-router";
-import { useState } from "react";
 import { ActivityIndicator, Text, View } from "react-native";
 import { Dashboard } from "../components/Dashboard";
 import { useRequireAuth } from "../src/hooks/useRequireAuth";
-import { Shift, User } from "../types";
+import { useShiftStore } from "../src/stores/useShiftStore";
+import { User } from "../types";
 
 
 export default function IndexRoute() {
   const router = useRouter();
-  const [shift, setShift] = useState<Shift>("1勤");
+  const selectedShift = useShiftStore((state) => state.selectedShift);
+  const setSelectedShift = useShiftStore((state) => state.setSelectedShift);
 
   // 認証必須 & 未ログインなら /login に飛ばす
   const { status, user } = useRequireAuth("/login", 1500);
@@ -40,18 +41,22 @@ export default function IndexRoute() {
   const appUser: User = {
     id: user!.id,
     displayName: user!.displayName ?? "未設定ユーザー",
+    departmentId: user!.departmentId ?? "",
+    departmentName: user!.departmentName ?? user!.department ?? "未設定部署",
     department: user!.department ?? "未設定部署",
     email: user!.email ?? "",
+    role: user!.role,
   };
 
   // ④ ホーム画面
   return (
     <Dashboard
       user={appUser}
-      selectedShift={shift}
-      onShiftChange={setShift}
+      selectedShift={selectedShift}
+      onShiftChange={setSelectedShift}
       onNavigate={(page) => {
         console.log("Navigating to:", page);
+        console.log("navigate page =", page, "path =", `/${page}`);
         router.push(`/${page}`);
       }}
     />

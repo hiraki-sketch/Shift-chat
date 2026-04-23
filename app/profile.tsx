@@ -38,6 +38,9 @@ export default function Profile() {
       }
 
       router.replace("/login"); // ✅ 戻るで戻れない
+    } catch (e) {
+      console.error("ログアウト時の通信エラー:", e);
+      Alert.alert("通信エラー", "ネットワーク接続を確認して、もう一度お試しください。");
     } finally {
       setIsLoggingOut(false);
     }
@@ -59,8 +62,11 @@ export default function Profile() {
       return {
         id: user.id,
         displayName: user.displayName ?? "未設定ユーザー",
+        departmentId: user.departmentId ?? "",
+        departmentName: user.departmentName ?? user.department ?? "未設定部署",
         department: user.department ?? "未設定部署",
         email: user.email ?? "",
+        role: user.role,
       };
     },
     [user]

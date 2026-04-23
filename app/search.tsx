@@ -2,10 +2,12 @@ import { useRouter } from "expo-router";
 import { ActivityIndicator, Text, View } from "react-native";
 import { SearchPage } from "../components/SearchPage";
 import { useRequireAuth } from "../src/hooks/useRequireAuth";
+import { useShiftStore } from "../src/stores/useShiftStore";
 import { User } from "../types";
 
 export default function Search() {
   const router = useRouter();
+  const selectedShift = useShiftStore((state) => state.selectedShift);
   const { status, user } = useRequireAuth("/login", 1500);
 
   if (status === "checking") {
@@ -30,8 +32,11 @@ export default function Search() {
   const appUser: User = {
     id: user!.id,
     displayName: user!.displayName ?? "未設定ユーザー",
+    departmentId: user!.departmentId ?? "",
+    departmentName: user!.departmentName ?? user!.department ?? "未設定部署",
     department: user!.department ?? "未設定部署",
     email: user!.email ?? "",
+    role: user!.role,
   };
 
   const handleNavigate = (page: string) => {
@@ -40,6 +45,10 @@ export default function Search() {
   };
 
   return (
-    <SearchPage user={appUser} onNavigate={handleNavigate} />
+    <SearchPage
+      user={appUser}
+      initialSelectedShift={selectedShift}
+      onNavigate={handleNavigate}
+    />
   );
 }
