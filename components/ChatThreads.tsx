@@ -4,6 +4,7 @@ import { Shift, User } from '../types';
 import { useChatThreadsManagement } from "../src/hooks/useChatThreadsManagement";
 import { ResponsiveGrid } from "./layout/ResponsiveGrid";
 import { Clock, MessageCircle } from './ui/icons';
+import { AppHeader } from './ui/app-header';
 import { Badge } from './ui/badge';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
@@ -27,23 +28,11 @@ export function ChatThreads({ user, selectedShift, onNavigate }: ChatThreadsProp
     return (
       <SafeAreaView className="flex-1">
       <View className="flex-1 bg-background">
-        {/* ヘッダー */}
-        <View className="bg-card border-b border-border">
-          <View className="px-5 py-4">
-            <View className="flex-row items-center space-x-4">
-              <Button variant="ghost" onPress={() => setSelectedThread(null)} className="p-2 rounded-xl">
-                ←
-              </Button>
-              <View>
-                <Text className="text-xl font-semibold text-foreground">{selectedThread.title}</Text>
-                <View className="flex-row items-center space-x-2 mt-1">
-                  <Text className="text-sm text-muted-foreground">{selectedThread.department}</Text>
-                  {selectedThread.shift && <Badge variant="secondary">{selectedThread.shift}</Badge>}
-                </View>
-              </View>
-            </View>
-          </View>
-        </View>
+        <AppHeader
+          title={selectedThread.title}
+          subtitle={`${selectedThread.department} - ${selectedShift}`}
+          onBack={() => setSelectedThread(null)}
+        />
 
         {/* メッセージ一覧 */}
         <ScrollView className="flex-1 p-4">
@@ -98,25 +87,16 @@ export function ChatThreads({ user, selectedShift, onNavigate }: ChatThreadsProp
   return (
     <SafeAreaView className="flex-1">
       <ScrollView className="flex-1 bg-background">
-      {/* ヘッダー */}
-      <View className="bg-card border-b border-border">
-        <View className="px-5 py-4">
-          <View className="flex-row items-center justify-between">
-            <View className="flex-row items-center space-x-4">
-              <Button variant="ghost" onPress={() => onNavigate('index')} className="p-2 rounded-xl">
-                ←
-              </Button>
-              <View>
-                <Text className="text-xl font-semibold text-foreground">チャットスレッド</Text>
-                <Text className="text-sm text-muted-foreground">{user.department}</Text>
-              </View>
-            </View>
-            <Button onPress={() => onNavigate('create-chat')} className="px-4 py-2 rounded-xl">
-              新規作成
-            </Button>
-          </View>
-        </View>
-      </View>
+      <AppHeader
+        title="チャットスレッド"
+        subtitle={`${user.department} - ${selectedShift}`}
+        onBack={() => onNavigate('index')}
+        rightSlot={
+          <Button onPress={() => onNavigate('create-chat')} className="px-4 py-2 rounded-xl">
+            新規作成
+          </Button>
+        }
+      />
 
       {/* スレッド一覧 */}
       <View className="p-5">

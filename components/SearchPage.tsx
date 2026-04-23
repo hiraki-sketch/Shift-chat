@@ -1,9 +1,11 @@
 //search-page.tsx
 import { ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from "react-native-safe-area-context";
-import { User } from '../types';
+import { useShiftStore } from "../src/stores/useShiftStore";
+import { Shift, User } from '../types';
 import { useSearchPageManagement } from "../src/hooks/useSearchPageManagement";
 import { ResponsiveGrid } from "./layout/ResponsiveGrid";
+import { AppHeader } from "./ui/app-header";
 import { Badge } from "./ui/badge";
 import { Button } from "./ui/button";
 import { Card } from "./ui/card";
@@ -11,11 +13,21 @@ import { Input } from "./ui/input";
 import { Label } from "./ui/label";
 interface SearchPageProps {
   user: User;
+  initialSelectedShift: Shift;
   onNavigate: (page: string) => void;
 }
 
-export function SearchPage({ user, onNavigate }: SearchPageProps) {
-  const { state, data, utils, actions } = useSearchPageManagement(user);
+export function SearchPage({
+  user,
+  initialSelectedShift,
+  onNavigate,
+}: SearchPageProps) {
+  const currentShift = useShiftStore((state) => state.selectedShift);
+  const setGlobalShift = useShiftStore((state) => state.setSelectedShift);
+  const { state, data, utils, actions } = useSearchPageManagement(
+    user,
+    initialSelectedShift
+  );
   const { searchTerm, searchType, selectedShift, selectedSeverity, showFilters } = state;
   const { filteredResults } = data;
   const { getTypeIcon, getTypeText } = utils;
@@ -31,34 +43,17 @@ export function SearchPage({ user, onNavigate }: SearchPageProps) {
   return (
     <SafeAreaView className="flex-1">
     <ScrollView className="flex-1 bg-gray-50">
-      {/* ヘッダー */}
-      <View className="bg-white-500 border-b border-gray-200">
-        <View className="px-4 py-4">
-          <View className="flex-row items-center justify-between">
-            <View className="flex-row items-center space-x-4">
-              <Button variant="ghost" onPress={() => onNavigate('index')} className="p-2 rounded-lg">
-                ←
-              </Button>
-              <View>
-                <Text className="text-xl font-semibold text-gray-900">検索・履歴</Text>
-                <Text className="text-sm text-gray-500">{user.department}</Text>
-              </View>
-            </View>
-            <View className="flex-row items-center space-x-2">
-              <Button variant="outline" size="sm" onPress={toggleFilters}>
-                <Text className="mr-2">🔧</Text>
-                <Text>フィルター</Text>
-              </Button>
-              {filteredResults.length > 0 && (
-                <Button variant="outline" size="sm">
-                  <Text className="mr-2">📥</Text>
-                  <Text>エクスポート</Text>
-                </Button>
-              )}
-            </View>
-          </View>
-        </View>
-      </View>
+      <AppHeader
+        title="検索・履歴"
+        subtitle={`${user.department} - ${currentShift}`}
+        onBack={() => onNavigate('index')}
+        rightSlot={
+          <Button variant="outline" size="sm" onPress={toggleFilters}>
+            <Text className="mr-2">🔧</Text>
+            <Text>フィルター</Text>
+          </Button>
+        }
+      />
 
       <View className="p-4 space-y-6">
         {/* 検索バー */}
@@ -115,7 +110,13 @@ export function SearchPage({ user, onNavigate }: SearchPageProps) {
                       key={shift.value}
                       variant={selectedShift === shift.value ? 'default' : 'outline'}
                       size="sm"
-                      onPress={() => setSelectedShift(shift.value as any)}
+                      onPress={() => {
+                        const nextShift = shift.value as Shift | "all";
+                        setSelectedShift(nextShift);
+                        if (nextShift !== "all") {
+                          setGlobalShift(nextShift);
+                        }
+                      }}
                     >
                       {shift.label}
                     </Button>

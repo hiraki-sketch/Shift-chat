@@ -1,58 +1,31 @@
+import { useQuery } from "@tanstack/react-query";
 import { useCallback, useMemo } from "react";
 import type { Shift, User } from "../../types";
-
-type UnreadIncident = {
-  id: string;
-  title: string;
-  severity: "high" | "medium" | "low";
-  shift: Shift;
-  time: string;
-};
-
-type RecentAnnouncement = {
-  id: string;
-  title: string;
-  time: string;
-  pinned: boolean;
-};
+import { fetchDashboardSummary } from "../api/dashboard";
+import { queryKeys } from "../lib/queryKeys";
 
 export function useDashboardManagement(user: User) {
   const shifts = useMemo<Shift[]>(() => ["1勤", "2勤", "3勤"], []);
 
-  const unreadIncidents = useMemo<UnreadIncident[]>(
-    () => [
-      {
-        id: "1",
-        title: "機械異常音発生",
-        severity: "high",
-        shift: "2勤",
-        time: "14:30",
-      },
-      {
-        id: "2",
-        title: "品質チェック要注意",
-        severity: "medium",
-        shift: "1勤",
-        time: "10:15",
-      },
-    ],
-    [user.department]
-  );
-
-  const recentAnnouncements = useMemo<RecentAnnouncement[]>(
-    () => [
-      { id: "1", title: "来週の保守点検について", time: "昨日 16:00", pinned: true },
-      { id: "2", title: "安全研修のお知らせ", time: "2日前", pinned: false },
-    ],
-    []
-  );
+  const summaryQuery = useQuery({
+    queryKey: queryKeys.dashboard.summary(user.id, user.departmentId),
+    enabled: Boolean(user.departmentId),
+    queryFn: () =>
+      fetchDashboardSummary({
+        departmentId: user.departmentId,
+      }),
+  });
 
   const sevDot = useCallback((s: string) => {
-    if (s === "high") return "bg-red-500";
-    if (s === "medium") return "bg-yellow-500";
-    if (s === "low") return "bg-green-500";
+    const x = s.toLowerCase();
+    if (x === "high") return "bg-red-500";
+    if (x === "medium") return "bg-yellow-500";
+    if (x === "low") return "bg-green-500";
     return "bg-gray-400";
   }, []);
+
+  const unreadIncidents = summaryQuery.data?.unreadIncidents ?? [];
+  const recentAnnouncements = summaryQuery.data?.recentAnnouncements ?? [];
 
   return {
     data: {
@@ -63,6 +36,11 @@ export function useDashboardManagement(user: User) {
     utils: {
       sevDot,
     },
+    query: {
+      isPending: summaryQuery.isPending,
+      isError: summaryQuery.isError,
+      error: summaryQuery.error,
+      refetch: summaryQuery.refetch,
+    },
   };
 }
-

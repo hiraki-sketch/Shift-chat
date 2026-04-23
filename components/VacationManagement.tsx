@@ -1,20 +1,29 @@
 import { Alert, Modal, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from "react-native-safe-area-context";
-import { User } from '../types';
+import { useVacationManagement } from "../src/hooks/useVacationManagement";
+import { Shift, User } from '../types';
 import { ResponsiveGrid } from "./layout/ResponsiveGrid";
+import { AppHeader } from "./ui/app-header";
 import { Badge } from "./ui/badge";
 import { Button } from "./ui/button";
 import { Card } from "./ui/card";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
-import { useVacationManagement } from "../src/hooks/useVacationManagement";
 interface VacationManagementProps {
   user: User;
+  selectedShift: Shift;
   onNavigate: (page: string) => void;
 }
 
-export function VacationManagement({ user, onNavigate }: VacationManagementProps) {
-  const { state, data, utils, actions } = useVacationManagement(user);
+export function VacationManagement({
+  user,
+  selectedShift,
+  onNavigate,
+}: VacationManagementProps) {
+  const { state, data, utils, actions } = useVacationManagement(
+    user,
+    selectedShift
+  );
   const { isModalOpen, startDate, endDate, vacationType, reason } = state;
   const { vacationBalance, vacationRequests } = data;
   const { getStatusColor, getStatusText, getStatusIcon, getTypeText, calculateDays } = utils;
@@ -30,29 +39,16 @@ export function VacationManagement({ user, onNavigate }: VacationManagementProps
   return (
     <SafeAreaView className="flex-1">
     <ScrollView className="flex-1 bg-gray-50">
-      {/* ヘッダー */}
-      <View className="bg-white border-b border-gray-200">
-        <View className="px-4 py-4">
-            <View className="flex-row items-center justify-between">
-            <View className="flex-row items-center space-x-4">
-              <Button
-                variant="ghost"
-                onPress={() => onNavigate('index')}
-                className="p-2 rounded-lg"
-              >
-                ←
-              </Button>
-              <View>
-                <Text className="text-xl font-semibold text-gray-900">有給休暇管理</Text>
-                <Text className="text-sm text-gray-500">{user.displayName} - {user.department}</Text>
-              </View>
-            </View>
-            <Button onPress={() => setIsModalOpen(true)}>
-              <Text className="text-white font-semibold">➕ 新規申請</Text>
-            </Button>
-          </View>
-        </View>
-      </View>
+      <AppHeader
+        title="有給休暇管理"
+        subtitle={`${user.displayName} - ${user.department} (${selectedShift})`}
+        onBack={() => onNavigate('index')}
+        rightSlot={
+          <Button onPress={() => setIsModalOpen(true)}>
+            <Text className="text-black font-semibold">➕ 新規申請</Text>
+          </Button>
+        }
+      />
 
       <View className="p-4 space-y-6">
         <ResponsiveGrid maxCols={{ sm:1, md:2, lg:3, xl:3, "2xl":3 }}>
@@ -165,6 +161,11 @@ export function VacationManagement({ user, onNavigate }: VacationManagementProps
                     </View>
                   </View>
                 ))}
+                {vacationRequests.length === 0 && (
+                  <Text className="text-sm text-gray-500">
+                    {selectedShift} の申請履歴はありません。
+                  </Text>
+                )}
               </View>
             </Card>
           </View>

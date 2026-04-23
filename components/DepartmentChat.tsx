@@ -1,12 +1,14 @@
-import { ArrowLeft, Bell, Clock, Pin, Send, User as UserIcon } from 'lucide-react-native';
-import { ScrollView, Text, View } from 'react-native';
+import { Bell, Clock, Pin, Send, User as UserIcon } from 'lucide-react-native';
+import { ActivityIndicator, Alert, Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { User } from '../types';
 import { useDepartmentChatManagement } from "../src/hooks/useDepartmentChatManagement";
+import { useShiftStore } from "../src/stores/useShiftStore";
+import { User } from '../types';
 import { ResponsiveGrid } from "./layout/ResponsiveGrid";
 import { Badge } from './ui/badge';
 import { Button } from './ui/button';
 import { Card } from './ui/card';
+import { AppHeader } from './ui/app-header';
 import { Input } from './ui/input';
 interface DepartmentChatProps {
   user: User;
@@ -14,11 +16,12 @@ interface DepartmentChatProps {
 }
 
 export function DepartmentChat({ user, onNavigate }: DepartmentChatProps) {
-  const { state, data, derived, utils, actions } = useDepartmentChatManagement(user);
-  const { newAnnouncement, isComposing } = state;
+  const currentShift = useShiftStore((state) => state.selectedShift);
+  const { state, data, derived, actions, query } = useDepartmentChatManagement(user);
+  const { isPending, isError, error, refetch } = query;
+  const { newAnnouncement, isComposing, isSending } = state;
   const { announcements } = data;
   const { canSend } = derived;
-  const { getPriorityColor, getPriorityText } = utils;
   const {
     setNewAnnouncement,
     handleToggleCompose,
@@ -29,27 +32,40 @@ export function DepartmentChat({ user, onNavigate }: DepartmentChatProps) {
   return (
     <SafeAreaView className="flex-1">
     <View className="flex-1 bg-background">
-      {/* ヘッダー */}
-      <View className="bg-card border-b border-border">
-        <View className="px-5 py-4">
-          <View className="flex-row items-center justify-between">
-            <View className="flex-row items-center gap-3">
-              <Button variant="ghost" onPress={() => onNavigate('index')} className="p-2 rounded-xl">
-                <ArrowLeft size={22} color="#64748b" />
-              </Button>
-              <View>
-                <Text className="text-xl font-semibold text-foreground">部署連絡</Text>
-                <Text className="text-sm text-muted-foreground">{user.department}</Text>
-              </View>
-            </View>
-            <Button variant="ghost" onPress={handleToggleCompose} className="p-2 rounded-xl">
-              <Bell size={22} color="#64748b" />
-            </Button>
-          </View>
-        </View>
-      </View>
+      <AppHeader
+        title="部署連絡"
+        subtitle={`${user.department} - ${currentShift}`}
+        onBack={() => onNavigate('index')}
+        rightSlot={
+          <Button variant="ghost" onPress={handleToggleCompose} className="p-2 rounded-xl">
+            <Bell size={22} color="#64748b" />
+          </Button>
+        }
+      />
 
       <ScrollView className="flex-1 p-5">
+        {!user.departmentId && (
+          <Text className="py-8 text-center text-muted-foreground">
+            プロフィールに部署が設定されていないため、連絡の取得・投稿ができません。
+          </Text>
+        )}
+        {user.departmentId && isPending && announcements.length === 0 && (
+          <ActivityIndicator className="py-8" />
+        )}
+        {isError && (
+          <View className="mb-4 rounded-lg border border-destructive/30 bg-destructive/10 p-4">
+            <Text className="text-destructive">
+              {error instanceof Error ? error.message : "読み込みに失敗しました"}
+            </Text>
+            <Pressable onPress={() => refetch()} className="mt-2 self-start">
+              <Text className="font-medium text-primary">再試行</Text>
+            </Pressable>
+          </View>
+        )}
+        {user.departmentId && !isPending && !isError && announcements.length === 0 && (
+          <Text className="py-8 text-center text-muted-foreground">部署連絡はまだありません</Text>
+        )}
+        {user.departmentId && announcements.length > 0 && (
         <ResponsiveGrid maxCols={{ sm:1, md:2, lg:2, xl:2, "2xl":2 }}>
           {announcements.map((announcement) => (
             <Card key={announcement.id}>
@@ -67,35 +83,34 @@ export function DepartmentChat({ user, onNavigate }: DepartmentChatProps) {
                         </View>
                       )}
                     </View>
-                    <Text className="text-sm text-muted-foreground mb-2">{announcement.content}</Text>
+                    <Text className="text-sm text-muted-foreground mb-2">{announcement.body}</Text>
                   </View>
                 </View>
                 
-                <View className="flex-row items-center justify-between">
-                  <View className="flex-row items-center gap-3">
-                    <View className="flex-row items-center gap-1">
-                      <UserIcon size={14} color="#64748b" />
-                      <Text className="text-xs text-muted-foreground">{announcement.author}</Text>
-                    </View>
-                    <View className="flex-row items-center gap-1">
-                      <Clock size={14} color="#64748b" />
-                      <Text className="text-xs text-muted-foreground">{announcement.createdAt}</Text>
-                    </View>
-                    {announcement.shift && (
-                      <Badge variant="secondary">
-                        <Text className="text-xs">{announcement.shift}</Text>
-                      </Badge>
-                    )}
+                <View className="flex-row items-center mt-2">
+                  <View className="flex-1 flex-row items-center min-w-0 mr-3">
+                    <UserIcon size={14} color="#64748b" />
+                    <Text
+                      numberOfLines={1}
+                      ellipsizeMode="tail"
+                      className="text-xs text-muted-foreground ml-1 flex-1"
+                    >
+                      {announcement.authorName ?? "不明"}
+                    </Text>
                   </View>
-                  <View className="flex-row items-center gap-1">
-                    <View className={`w-2 h-2 rounded-full ${getPriorityColor(announcement.priority)}`} />
-                    <Text className="text-xs text-muted-foreground">{getPriorityText(announcement.priority)}</Text>
+
+                  <View className="flex-row items-center shrink-0">
+                    <Clock size={14} color="#64748b" />
+                    <Text className="text-xs text-muted-foreground ml-1">
+                      {announcement.createdAt}
+                    </Text>
                   </View>
                 </View>
               </View>
             </Card>
           ))}
         </ResponsiveGrid>
+        )}
       </ScrollView>
 
       {/* 新規投稿フォーム */}
@@ -117,13 +132,16 @@ export function DepartmentChat({ user, onNavigate }: DepartmentChatProps) {
               >
                 <Text>キャンセル</Text>
               </Button>
-              <Button 
-                onPress={handleSendAnnouncement}
-                disabled={!canSend}
+              <Button
+                onPress={async () => {
+                  const r = await handleSendAnnouncement();
+                  if (!r.ok) Alert.alert("投稿エラー", r.message);
+                }}
+                disabled={!canSend || isSending}
                 className="flex-1"
               >
                 <Send size={16} color="white" />
-                <Text className="text-white ml-2">送信</Text>
+                <Text className="text-black ml-2">{isSending ? "送信中…" : "送信"}</Text>
               </Button>
             </View>
           </View>

@@ -1,22 +1,28 @@
 import { ScrollView, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { User } from "../types";
+import { Shift, User } from "../types";
 import { useAttendanceManagement } from "../src/hooks/useAttendanceManagement";
 import { Badge } from "./ui/badge";
 import { Button } from "./ui/button";
+import { AppHeader } from "./ui/app-header";
 import { Card } from "./ui/card";
 
 // user側の操作によって出勤管理を行う。
 interface AttendanceManagementProps {
   user: User;
+  selectedShift: Shift;
   onNavigate: (page: string) => void;
 }
 
 export function AttendanceManagement({
   user,
+  selectedShift,
   onNavigate,
 }: AttendanceManagementProps) {
-  const { state, data, utils, actions } = useAttendanceManagement(user);
+  const { state, data, utils, actions } = useAttendanceManagement(
+    user,
+    selectedShift
+  );
   const { currentTime, todayStatus } = state;
   const { todayAttendance, recentAttendance } = data;
   const { formatTime, getStatusColor, getStatusText, calculateWorkTime } = utils;
@@ -25,22 +31,11 @@ export function AttendanceManagement({
   return (
     <SafeAreaView className="flex-1">
     <ScrollView className="flex-1 bg-background">
-      {/* ヘッダー */}
-      <View className="bg-card border-b border-border">
-        <View className="px-5 py-4">
-          <View className="flex-row items-center space-x-4">
-            <Button variant="ghost" onPress={() => onNavigate("index")} className="p-2 rounded-xl">
-              ←
-            </Button>
-            <View>
-              <Text className="text-xl font-semibold text-muted-foreground">出勤管理</Text>
-              <Text className="text-sm text-muted-foreground">
-                {user.displayName} - {user.department}
-              </Text>
-            </View>
-          </View>
-        </View>
-      </View>
+      <AppHeader
+        title="出勤管理"
+        subtitle={`${user.displayName} - ${user.department} (${selectedShift})`}
+        onBack={() => onNavigate("index")}
+      />
 
       <View className="p-5 gap-6">
         <View className="flex-row flex-wrap gap-6">
@@ -229,6 +224,11 @@ export function AttendanceManagement({
                     )}
                   </View>
                 ))}
+                {recentAttendance.length === 0 && (
+                  <Text className="text-sm text-muted-foreground">
+                    {selectedShift} の出勤履歴はありません。
+                  </Text>
+                )}
               </View>
             </Card>
           </View>

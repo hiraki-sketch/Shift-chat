@@ -32,6 +32,7 @@ export function useProfileSettingsManagement({
         return "管理者";
       case "manager":
         return "リーダー";
+      case "member":
       case "user":
         return "一般ユーザー";
       default:
@@ -45,6 +46,7 @@ export function useProfileSettingsManagement({
         return "bg-red-500";
       case "manager":
         return "bg-blue-500";
+      case "member":
       case "user":
         return "bg-gray-500";
       default:

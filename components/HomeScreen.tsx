@@ -11,10 +11,10 @@ import Animated, {
 import { LinearGradient } from "expo-linear-gradient";
 import { Text, View, useWindowDimensions } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { Button } from "./ui/button";
-import { Badge } from "./ui/badge";
-import { Card } from "./ui/card";
 import { ResponsiveGrid } from "./layout/ResponsiveGrid";
+import { Badge } from "./ui/badge";
+import { Button } from "./ui/button";
+import { Card } from "./ui/card";
 
 interface HomeScreenProps {
   onNavigate: (page: string) => void;
@@ -72,8 +72,8 @@ export function HomeScreen({ onNavigate }: HomeScreenProps) {
   ];
 
   const stats = [
-    { number: "25/10", label: "サポート", description: "安心サポート" },
-    { number: "3勤", label: "対応", description: "全勤務帯完全対応" },
+    {  label: "サポート", description: "安心サポート" },
+    { number: "3勤", label: "対応", description: "交代勤務チャット" },
   ];
 
   // ---- Scroll アニメ用の共有値 ----
@@ -186,7 +186,7 @@ export function HomeScreen({ onNavigate }: HomeScreenProps) {
                   <Text className="text-white text-lg">🏭</Text>
                 </View>
                 <Text className="text-xl font-bold text-slate-800">
-                  CHAT-MANAGE
+                  GENBA
                 </Text>
               </View>
               <View className="flex-row">
@@ -222,17 +222,16 @@ export function HomeScreen({ onNavigate }: HomeScreenProps) {
 
          
               <Text className="text-3xl font-bold text-slate-800 mb-4 text-center">
-                交代勤務現場の
+                GENBAの交代勤務における
                 <Text className="text-blue-600"> 
                 コミュニケーション </Text>
-                を革新する。
+                を革新
               </Text>
             
 
            
               <Text className="text-base text-slate-600 mb-8 text-center">
-                工場などの交代勤務現場での連絡・異常報告・履歴保存を一元化。
-                部署単位・勤務帯別のコミュニケーション円滑化で、業務効率を大幅に向上させます。
+                工場などのGENBAにおける交代勤務の連絡・異常報告に使えます。
               </Text>
        
 
@@ -278,7 +277,7 @@ export function HomeScreen({ onNavigate }: HomeScreenProps) {
               交代勤務に特化した機能
             </Text>
             <Text className="text-base text-slate-600 text-center">
-              工場現場の実際のワークフローに合わせて設計された、実用的な機能群
+              GENBAの実際のワークフローに合わせた機能
             </Text>
           </FadeInOnScroll>
 
@@ -322,8 +321,8 @@ export function HomeScreen({ onNavigate }: HomeScreenProps) {
         導入効果
       </Text>
       <Text className="text-base text-slate-600 mb-6">
-        交代勤務チャットの導入により、現場の業務効率が大幅に改善されます。
-        従来の紙ベースやLINE中心の連絡体制から、リアルタイムで情報共有できる環境へ。
+        交代勤務チャットの導入により、GENBAの業務効率化
+        ペーパーレス化、リアルタイムで情報共有できる環境へ。
       </Text>
     </FadeInOnScroll>
 
@@ -350,7 +349,7 @@ export function HomeScreen({ onNavigate }: HomeScreenProps) {
       <Card className="p-6">
         <View className="items-center">
           <Text className="text-5xl font-bold text-blue-600 mb-2">
-            目標45%
+            
           </Text>
           <Text className="text-base font-medium text-slate-800 mb-1">
             業務効率向上
@@ -420,7 +419,7 @@ export function HomeScreen({ onNavigate }: HomeScreenProps) {
             direction="left"
           >
             <Text className="text-2xl font-bold text-white mb-3">
-              今すぐ始めて、現場の生産性を向上させましょう
+              今すぐ始めて、GENBAの生産性を向上させましょう
             </Text>
             <Text className="text-base text-blue-100 mb-6">
               無料トライアルで交代勤務チャットの効果を実感してください
@@ -452,11 +451,11 @@ export function HomeScreen({ onNavigate }: HomeScreenProps) {
                 <Text className="text-white text-lg">🏭</Text>
               </View>
               <Text className="text-xl font-bold text-slate-800">
-                SHIFT-CHAT
+                GENBA
               </Text>
             </View>
             <Text className="text-slate-600 mb-4">
-              製造業の交代勤務現場に特化したコミュニケーションツール。安全で効率的な現場運営をサポートします。
+              製造業のGENBAにおける交代勤務に特化したコミュニケーションツール。安全で効率的なGENBA運営をサポートします。
             </Text>
 
             <View className="flex-row">
@@ -479,26 +478,26 @@ export function HomeScreen({ onNavigate }: HomeScreenProps) {
               </View>
               <View>
                 <Text className="font-medium mb-2 text-slate-800">
-                  サポート
+                
                 </Text>
                 <Text className="text-sm text-slate-600 mb-1">
-                  安心サポート
+                  
                 </Text>
                 <Text className="text-sm text-slate-600 mb-1">
-                  導入支援
+                  
                 </Text>
                 <Text className="text-sm text-slate-600 mb-1">
-                  研修サービス
+                
                 </Text>
                 <Text className="text-sm text-slate-600 mb-1">
-                  技術サポート
+                
                 </Text>
               </View>
             </View>
 
             <View className="border-t border-slate-200 mt-8 pt-6 items-center">
               <Text className="text-sm text-slate-500">
-                © 2025 SHIFT-Chat. All rights reserved.
+                © 2026 GENBA. All rights reserved.
               </Text>
             </View>
           </View>

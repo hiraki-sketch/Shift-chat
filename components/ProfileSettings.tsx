@@ -1,10 +1,11 @@
 //profile-settings.tsx
 import { ActivityIndicator, Alert, ScrollView, Switch, Text, View } from 'react-native';
 import { SafeAreaView } from "react-native-safe-area-context";
-import { User } from '../types';
 import { useProfileSettingsManagement } from "../src/hooks/useProfileSettingsManagement";
+import { User } from '../types';
 import { Badge } from './ui/badge';
 import { Button } from './ui/button';
+import { AppHeader } from './ui/app-header';
 import { Card } from './ui/card';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
@@ -46,40 +47,23 @@ export function ProfileSettings({ user, onNavigate, onLogout }: ProfileSettingsP
   return (
     <SafeAreaView className="flex-1">
     <ScrollView className="flex-1 bg-background">
-      {/* ヘッダー */}
-      <View className="bg-card border-b border-border">
-        <View className="px-5 py-4">
-          <View className="flex-row items-center justify-between">
-            <View className="flex-row items-center space-x-4">
-              <Button
-                variant="ghost"
-                onPress={() => onNavigate('index')}
-                className="p-2 rounded-xl"
-              >
-                ←
-              </Button>
-              <View>
-                <Text className="text-xl font-semibold text-foreground">設定・プロフィール</Text>
-                <Text className="text-sm text-muted-foreground">{user.displayName}</Text>
-              </View>
-            </View>
-            <Button
-              variant="outline"
-              onPress={async () => {
-                const res = await handleLogoutInternal();
-                if (!res.ok) Alert.alert(res.title, res.message);
-              }}
-              className="border-red-500"
-            >
-              {loadingLogout ? (
-                <ActivityIndicator />
-              ) : (
-              <Text className="text-red-500">🚪 ログアウト</Text>
-              )}
-            </Button>
-          </View>
-        </View>
-      </View>
+      <AppHeader
+        title="設定・プロフィール"
+        subtitle={user.displayName}
+        onBack={() => onNavigate('index')}
+        rightSlot={
+          <Button
+            variant="outline"
+            onPress={async () => {
+              const res = await handleLogoutInternal();
+              if (!res.ok) Alert.alert(res.title, res.message);
+            }}
+            className="border-red-500"
+          >
+            {loadingLogout ? <ActivityIndicator /> : <Text className="text-red-500">🚪 ログアウト</Text>}
+          </Button>
+        }
+      />
 
       <View className="p-5 space-y-6">
         {/* プロフィール情報 */}

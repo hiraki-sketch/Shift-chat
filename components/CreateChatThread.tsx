@@ -1,8 +1,10 @@
+import { useCallback } from 'react';
 import { Alert, ScrollView, Switch, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from "react-native-safe-area-context";
-import { User } from '../types';
 import { useCreateChatThreadManagement } from "../src/hooks/useCreateChatThreadManagement";
+import { User } from '../types';
 import { ResponsiveGrid } from "./layout/ResponsiveGrid";
+import { AppHeader } from "./ui/app-header";
 import { Badge } from "./ui/badge";
 import { Button } from "./ui/button";
 import { Card } from "./ui/card";
@@ -39,23 +41,34 @@ export function CreateChatThread({ user, onNavigate }: CreateChatThreadProps) {
     handleSubmit,
   } = actions;
 
+  const goBackToChatThreads = useCallback(() => {
+    onNavigate('chat-threads');
+  }, [onNavigate]);
+
+  const handleBackOrCancel = useCallback(() => {
+    const res = handleCancel();
+    if (!res.ok) {
+      Alert.alert(res.title, res.message, [
+        { text: 'キャンセル', style: 'cancel' },
+        {
+          text: '破棄して戻る',
+          style: 'destructive',
+          onPress: goBackToChatThreads,
+        },
+      ]);
+      return;
+    }
+    goBackToChatThreads();
+  }, [goBackToChatThreads, handleCancel]);
+
   return (
     <SafeAreaView className="flex-1">
     <ScrollView className="flex-1 bg-background">
-      {/* ヘッダー */}
-      <View className="bg-card border-b border-border">
-        <View className="px-5 py-4">
-          <View className="flex-row items-center space-x-4">
-            <Button variant="ghost" onPress={handleCancel} className="p-2 rounded-xl">
-              ←
-            </Button>
-            <View>
-              <Text className="text-xl font-semibold text-foreground">新しいチャット作成</Text>
-              <Text className="text-sm text-muted-foreground">{user.department}</Text>
-            </View>
-          </View>
-        </View>
-      </View>
+      <AppHeader
+        title="新しいチャット作成"
+        subtitle={user.department}
+        onBack={handleBackOrCancel}
+      />
 
       <View className="p-5">
         <View className="space-y-6">
@@ -146,21 +159,7 @@ export function CreateChatThread({ user, onNavigate }: CreateChatThreadProps) {
 
             <View className="flex-row space-x-4">
               <Button
-                onPress={() => {
-                  const res = handleCancel();
-                  if (!res.ok) {
-                    Alert.alert(res.title, res.message, [
-                      { text: "キャンセル", style: "cancel" },
-                      {
-                        text: "破棄して戻る",
-                        style: "destructive",
-                        onPress: () => onNavigate("chat-threads"),
-                      },
-                    ]);
-                    return;
-                  }
-                  onNavigate("chat-threads");
-                }}
+                onPress={handleBackOrCancel}
                 variant="outline"
                 className="flex-1"
               >

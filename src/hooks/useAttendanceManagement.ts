@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import type { AttendanceRecord, User } from "../../types";
+import type { AttendanceRecord, Shift, User } from "../../types";
 
 type TodayStatus = "not_started" | "working" | "on_break" | "finished";
 
-export function useAttendanceManagement(user: User) {
+export function useAttendanceManagement(user: User, selectedShift: Shift) {
   const [currentTime, setCurrentTime] = useState(new Date());
   const [todayStatus, setTodayStatus] = useState<TodayStatus>("not_started");
 
@@ -12,11 +12,11 @@ export function useAttendanceManagement(user: User) {
       id: "1",
       userId: user.id,
       date: new Date().toISOString().split("T")[0],
-      shift: "1勤",
+      shift: selectedShift,
       clockIn: "08:00",
       status: "present",
     }),
-    [user.id]
+    [selectedShift, user.id]
   );
 
   const recentAttendance = useMemo<AttendanceRecord[]>(
@@ -59,6 +59,11 @@ export function useAttendanceManagement(user: User) {
       },
     ],
     [user.id]
+  );
+
+  const filteredRecentAttendance = useMemo(
+    () => recentAttendance.filter((record) => record.shift === selectedShift),
+    [recentAttendance, selectedShift]
   );
 
   useEffect(() => {
@@ -155,7 +160,7 @@ export function useAttendanceManagement(user: User) {
     },
     data: {
       todayAttendance,
-      recentAttendance,
+      recentAttendance: filteredRecentAttendance,
     },
     utils: {
       formatTime,

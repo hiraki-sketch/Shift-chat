@@ -9,8 +9,11 @@ export function DashboardExample() {
   const mockUser: User = {
     id: '1',
     displayName: '平木友隆',
+    departmentId: 'dept-1',
+    departmentName: '製造部',
     department: '製造部',
-    email: '@example.com'
+    email: '@example.com',
+    role: 'member',
   };
 
   const handleShiftChange = (shift: Shift) => {

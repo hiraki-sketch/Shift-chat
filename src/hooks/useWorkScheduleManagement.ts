@@ -1,7 +1,7 @@
 import { useCallback, useMemo, useState } from "react";
 import type { Shift, User, WorkScheduleEntry } from "../../types";
 
-export function useWorkScheduleManagement(user: User) {
+export function useWorkScheduleManagement(user: User, selectedShift: Shift) {
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
   const [currentMonth, setCurrentMonth] = useState(new Date());
 
@@ -135,12 +135,17 @@ export function useWorkScheduleManagement(user: User) {
     );
   }, []);
 
+  const filteredScheduleEntries = useMemo(
+    () => scheduleEntries.filter((entry) => entry.shift === selectedShift),
+    [scheduleEntries, selectedShift]
+  );
+
   const getScheduleForDate = useCallback(
     (date: Date) => {
       const dateStr = formatDateForComparison(date);
-      return scheduleEntries.find((entry) => entry.date === dateStr);
+      return filteredScheduleEntries.find((entry) => entry.date === dateStr);
     },
-    [formatDateForComparison, scheduleEntries]
+    [filteredScheduleEntries, formatDateForComparison]
   );
 
   const days = useMemo(() => getDaysInMonth(currentMonth), [currentMonth, getDaysInMonth]);
@@ -156,7 +161,7 @@ export function useWorkScheduleManagement(user: User) {
       currentMonth,
     },
     data: {
-      scheduleEntries,
+      scheduleEntries: filteredScheduleEntries,
       days,
       monthNames,
       dayNames,

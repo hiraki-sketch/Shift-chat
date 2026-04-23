@@ -1,7 +1,10 @@
 import { useAuth } from "@/contexts/AuthContext";
+import { getPasswordRecoveryRedirectTo } from "@/lib/supabase/authRedirect";
 import { supabase } from "@/lib/supabase";
 import { useRouter } from "expo-router";
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+
+export type DepartmentOption = { id: string; name: string };
 
 type AuthError = { code?: string; message: string };
 
@@ -40,7 +43,14 @@ export function useLoginScreenManagement({
   const [isLoading, setIsLoading] = useState(false);
   const [isSignUp, setIsSignUp] = useState(initialIsSignUp);
   const [displayName, setDisplayName] = useState("");
-  const [department, setDepartment] = useState("");
+  const [departmentId, setDepartmentId] = useState("");
+  const [departmentOptions, setDepartmentOptions] = useState<DepartmentOption[]>(
+    []
+  );
+  const [departmentsLoading, setDepartmentsLoading] = useState(false);
+  const [departmentsFetchError, setDepartmentsFetchError] = useState<
+    string | null
+  >(null);
 
   const { signIn, signUp } = useAuth();
   const router = useRouter();
@@ -53,12 +63,69 @@ export function useLoginScreenManagement({
     setIsSignUp((v) => !v);
     setError(null);
     setMessage(null);
+    setDepartmentId("");
   }, []);
+
+  useEffect(() => {
+    if (!isSignUp) return;
+    let cancelled = false;
+    setDepartmentsLoading(true);
+    setDepartmentsFetchError(null);
+    void (async () => {
+      const { data, error } = await supabase
+        .from("signup_departments")
+        .select("id, name")
+        .order("name", { ascending: true });
+      if (cancelled) return;
+      setDepartmentsLoading(false);
+      if (error) {
+        console.warn("部署一覧の取得に失敗", error);
+        setDepartmentsFetchError(
+          "部署一覧を取得できませんでした。通信環境を確認してください。"
+        );
+        setDepartmentOptions([]);
+        return;
+      }
+      setDepartmentOptions((data ?? []) as DepartmentOption[]);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [isSignUp]);
+
+  const handleForgotPassword = useCallback(async () => {
+    setError(null);
+    setMessage(null);
+    const trimmed = email.trim();
+    if (!trimmed) {
+      setError("再設定用のリンクを送るには、メールアドレスを入力してください。");
+      return;
+    }
+    setIsLoading(true);
+    try {
+      const { error: resetError } = await supabase.auth.resetPasswordForEmail(
+        trimmed,
+        { redirectTo: getPasswordRecoveryRedirectTo() }
+      );
+      if (resetError) {
+        setError(getAuthErrorMessage(resetError as AuthError));
+        return;
+      }
+      setMessage(
+        "パスワード再設定用のリンクをメールで送信しました。届いたメールから開いてください。"
+      );
+    } catch (e) {
+      console.error("resetPasswordForEmail error:", e);
+      setError("送信に失敗しました。ネットワークを確認して再度お試しください。");
+    } finally {
+      setIsLoading(false);
+    }
+  }, [email]);
 
   const createProfileAfterSignUp = useCallback(
     async (
       displayNameValue: string,
-      departmentValue: string
+      departmentIdValue: string
     ): Promise<{ hasSession: boolean }> => {
       const { data: sessionData, error: sessionError } =
         await supabase.auth.getSession();
@@ -69,26 +136,12 @@ export function useLoginScreenManagement({
       const authUser = sessionData.session?.user;
       if (!authUser) return { hasSession: false };
 
-      let departmentId: string | null = null;
-      if (departmentValue) {
-        const { data: departmentData, error: departmentError } = await supabase
-          .from("departments")
-          .select("id")
-          .eq("name", departmentValue)
-          .maybeSingle();
-        if (departmentError) {
-          console.warn("部署IDの解決に失敗しました。", departmentError);
-        } else {
-          departmentId = departmentData?.id ?? null;
-        }
-      }
-
       const { error: upsertError } = await supabase.from("profiles").upsert(
         {
           id: authUser.id,
           email: authUser.email,
           display_name: displayNameValue,
-          department_id: departmentId,
+          department_id: departmentIdValue || null,
         },
         { onConflict: "id" }
       );
@@ -104,11 +157,15 @@ export function useLoginScreenManagement({
     setError(null);
     setMessage(null);
     try {
+      if (!departmentId.trim()) {
+        setError("部署を選択してください。");
+        return;
+      }
       const { data: signUpData, error: signUpError } = await signUp(
         email,
         password,
         displayName,
-        department
+        departmentId
       );
       if (signUpError) {
         setError(getAuthErrorMessage(signUpError));
@@ -123,7 +180,7 @@ export function useLoginScreenManagement({
       }
       const { hasSession } = await createProfileAfterSignUp(
         displayName,
-        department
+        departmentId
       );
       if (hasSession) {
         router.replace("/");
@@ -141,7 +198,7 @@ export function useLoginScreenManagement({
     email,
     password,
     displayName,
-    department,
+    departmentId,
     createProfileAfterSignUp,
     router,
   ]);
@@ -179,15 +236,19 @@ export function useLoginScreenManagement({
       isLoading,
       isSignUp,
       displayName,
-      department,
+      departmentId,
+      departmentOptions,
+      departmentsLoading,
+      departmentsFetchError,
     },
     actions: {
       setEmail,
       setPassword,
       setDisplayName,
-      setDepartment,
+      setDepartmentId,
       handleGoHome,
       handleToggleMode,
+      handleForgotPassword,
       handleSubmit,
     },
   };

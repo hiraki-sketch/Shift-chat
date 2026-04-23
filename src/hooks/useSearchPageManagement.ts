@@ -29,10 +29,12 @@ type AnnouncementResult = {
 
 type SearchResult = IncidentResult | AnnouncementResult;
 
-export function useSearchPageManagement(user: User) {
+export function useSearchPageManagement(user: User, initialShift?: Shift) {
   const [searchTerm, setSearchTerm] = useState("");
   const [searchType, setSearchType] = useState<SearchType>("all");
-  const [selectedShift, setSelectedShift] = useState<Shift | "all">("all");
+  const [selectedShift, setSelectedShift] = useState<Shift | "all">(
+    initialShift ?? "all"
+  );
   const [selectedSeverity, setSelectedSeverity] =
     useState<SeverityFilter>("all");
   const [showFilters, setShowFilters] = useState(false);

@@ -1,7 +1,7 @@
 // components/Dashboard.tsx
 import { LinearGradient } from "expo-linear-gradient";
 import { cssInterop } from "nativewind";
-import { ScrollView, Text, TouchableOpacity, View } from "react-native";
+import { ActivityIndicator, Pressable, ScrollView, Text, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useBreakpoint } from "../hooks/useResponsive";
 import { useDashboardManagement } from "../src/hooks/useDashboardManagement";
@@ -34,9 +34,10 @@ export function Dashboard({
   onShiftChange,
   onNavigate,
 }: DashboardProps) {
-  const { data, utils } = useDashboardManagement(user);
+  const { data, utils, query } = useDashboardManagement(user);
   const { shifts, unreadIncidents, recentAnnouncements } = data;
   const { sevDot } = utils;
+  const { isPending, isError, error, refetch } = query;
   const { bp } = useBreakpoint();
   const narrow = bp === "sm";
 
@@ -62,7 +63,7 @@ export function Dashboard({
           <View className="px-5 py-4">
             <View className="flex-row items-center justify-between">
               <View>
-                <Text className="text-2xl font-semibold text-white">CHAT‐MANAGE</Text>
+                <Text className="text-2xl font-semibold text-white">GENBA</Text>
                 <Text className="text-base text-blue-100">
                   {user.displayName} - {user.department}
                 </Text>
@@ -112,6 +113,14 @@ export function Dashboard({
           </View>
         </G>
 
+        {!user.departmentId && (
+          <View className="rounded-2xl border border-amber-200 bg-amber-50 p-4">
+            <Text className="text-sm text-amber-900">
+              プロフィールに部署が設定されていないため、未読の異常報告と最新の部署連絡は表示されません。
+            </Text>
+          </View>
+        )}
+
         {/* 未読の異常報告 / 最新の部署連絡 → 最大2列 */}
         <ResponsiveGrid maxCols={{ sm:1, md:2, lg:2, xl:2, "2xl":2 }}>
           {/* 未読の異常報告 */}
@@ -122,55 +131,82 @@ export function Dashboard({
             className="rounded-2xl p-4 border border-red-200 shadow-lg"
           >
             <View className="flex-row items-center justify-between mb-2">
-              <Text className="text-base font-semibold text-red-800">未読の異常報告</Text>
+              <Text className="text-base font-semibold text-red-800">直近の異常報告</Text>
               <AlertTriangle size={18} color="#dc2626" />
             </View>
             <View className="gap-3">
-              {unreadIncidents.map((incident) => (
-                <View
-                  key={incident.id}
-                  className="flex-row items-center justify-between p-3 rounded-xl bg-white/80 border border-red-100"
-                >
-                  <View className="flex-row items-center gap-3">
-                    <View className={`w-3 h-3 rounded-full ${sevDot(incident.severity)}`} />
-                    <View>
-                      <Text className="text-sm font-medium text-gray-800">{incident.title}</Text>
-                      <Text className="text-xs text-gray-600">
-                        {incident.shift} - {incident.time}
-                      </Text>
-                    </View>
-                  </View>
-                  <View
-                    className={`px-2 py-1 rounded-md ${
-                      incident.severity === "high"
-                        ? "bg-red-100"
-                        : incident.severity === "medium"
-                        ? "bg-yellow-100"
-                        : "bg-green-100"
-                    }`}
-                  >
-                    <Text
-                      className={`text-xs font-medium ${
-                        incident.severity === "high"
-                          ? "text-red-800"
-                          : incident.severity === "medium"
-                          ? "text-yellow-800"
-                          : "text-green-800"
-                      }`}
-                    >
-                      {incident.severity}
-                    </Text>
-                  </View>
+              {isPending && (
+                <View className="py-6 items-center justify-center">
+                  <ActivityIndicator size="small" color="#dc2626" />
+                  <Text className="text-xs text-gray-600 mt-2">読み込み中…</Text>
                 </View>
-              ))}
-              <Button
-                variant="outline"
-                size="md"
-                onPress={() => onNavigate("search")}
-                className="bg-white border-red-300"
-              >
-                すべて見る
-              </Button>
+              )}
+              {isError && (
+                <View className="py-3 px-2">
+                  <Text className="text-sm text-red-700">
+                    {error instanceof Error ? error.message : "読み込みに失敗しました"}
+                  </Text>
+                  <Pressable onPress={() => refetch()} className="mt-2 self-start">
+                    <Text className="text-sm text-red-800 font-semibold underline">再試行</Text>
+                  </Pressable>
+                </View>
+              )}
+              {!isPending && !isError && (
+                <>
+                  {unreadIncidents.map((incident) => {
+                    const sev = incident.severity.toLowerCase();
+                    return (
+                      <View
+                        key={incident.id}
+                        className="flex-row items-center justify-between p-3 rounded-xl bg-white/80 border border-red-100"
+                      >
+                        <View className="flex-row items-center gap-3 flex-1">
+                          <View className={`w-3 h-3 rounded-full ${sevDot(incident.severity)}`} />
+                          <View className="flex-1">
+                            <Text className="text-sm font-medium text-gray-800">{incident.title}</Text>
+                            <Text className="text-xs text-gray-600">
+                              {incident.shift} · {incident.time}
+                            </Text>
+                          </View>
+                        </View>
+                        <View
+                          className={`px-2 py-1 rounded-md ${
+                            sev === "high"
+                              ? "bg-red-100"
+                              : sev === "medium"
+                                ? "bg-yellow-100"
+                                : sev === "low"
+                                  ? "bg-green-100"
+                                  : "bg-gray-100"
+                          }`}
+                        >
+                          <Text
+                            className={`text-xs font-medium ${
+                              sev === "high"
+                                ? "text-red-800"
+                                : sev === "medium"
+                                  ? "text-yellow-800"
+                                  : sev === "low"
+                                    ? "text-green-800"
+                                    : "text-gray-800"
+                            }`}
+                          >
+                            {incident.severity}
+                          </Text>
+                        </View>
+                      </View>
+                    );
+                  })}
+                  <Button
+                    variant="outline"
+                    size="md"
+                    onPress={() => onNavigate("incident-report")}
+                    className="bg-white border-red-300"
+                  >
+                    すべて見る
+                  </Button>
+                </>
+              )}
             </View>
           </G>
 
@@ -186,27 +222,47 @@ export function Dashboard({
               <Bell size={18} color="#2563eb" />
             </View>
             <View className="gap-3">
-              {recentAnnouncements.map((a) => (
-                <View key={a.id} className="p-3 rounded-xl bg-white/80 border border-blue-100">
-                  <View className="flex-row items-center gap-2">
-                    <Text className="text-sm font-medium text-gray-800">{a.title}</Text>
-                    {a.pinned && (
-                      <View className="px-2 py-1 rounded-md bg-blue-100 border border-blue-300">
-                        <Text className="text-xs text-blue-800 font-medium">ピン留め</Text>
-                      </View>
-                    )}
-                  </View>
-                  <Text className="text-xs text-gray-600 mt-1">{a.time}</Text>
+              {isPending && (
+                <View className="py-6 items-center justify-center">
+                  <ActivityIndicator size="small" color="#2563eb" />
+                  <Text className="text-xs text-gray-600 mt-2">読み込み中…</Text>
                 </View>
-              ))}
-              <Button
-                variant="outline"
-                size="md"
-                onPress={() => onNavigate("department-chat")}
-                className="bg-white border-blue-300"
-              >
-                部署連絡を見る
-              </Button>
+              )}
+              {isError && (
+                <View className="py-3 px-2">
+                  <Text className="text-sm text-red-700">
+                    {error instanceof Error ? error.message : "読み込みに失敗しました"}
+                  </Text>
+                  <Pressable onPress={() => refetch()} className="mt-2 self-start">
+                    <Text className="text-sm text-red-800 font-semibold underline">再試行</Text>
+                  </Pressable>
+                </View>
+              )}
+              {!isPending && !isError && (
+                <>
+                  {recentAnnouncements.map((a) => (
+                    <View key={a.id} className="p-3 rounded-xl bg-white/80 border border-blue-100">
+                      <View className="flex-row items-center gap-2">
+                        <Text className="text-sm font-medium text-gray-800">{a.title}</Text>
+                        {a.pinned && (
+                          <View className="px-2 py-1 rounded-md bg-blue-100 border border-blue-300">
+                            <Text className="text-xs text-blue-800 font-medium">ピン留め</Text>
+                          </View>
+                        )}
+                      </View>
+                      <Text className="text-xs text-gray-600 mt-1">{a.time}</Text>
+                    </View>
+                  ))}
+                  <Button
+                    variant="outline"
+                    size="md"
+                    onPress={() => onNavigate("department-chat")}
+                    className="bg-white border-blue-300"
+                  >
+                    部署連絡を見る
+                  </Button>
+                </>
+              )}
             </View>
           </G>
         </ResponsiveGrid>
@@ -245,7 +301,7 @@ export function Dashboard({
               className="h-28 items-center justify-center bg-white border border-purple-200 rounded-xl"
             >
               <FileText size={32} color="#a855f7" />
-              <Text className="text-lg mt-2 text-purple-600 font-medium">PDF出力</Text>
+              <Text className="text-lg mt-2 text-purple-600 font-medium">COMMING SOON</Text>
             </TouchableOpacity>
           </ResponsiveGrid>
         </G>

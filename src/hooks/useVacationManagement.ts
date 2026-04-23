@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useState } from "react";
-import type { User, VacationRequest } from "../../types";
+import type { Shift, User, VacationRequest } from "../../types";
 
 export type VacationType =
   | "paid_leave"
@@ -11,7 +11,7 @@ type SubmitResult =
   | { ok: true; title: string; message: string }
   | { ok: false; title: string; message: string };
 
-export function useVacationManagement(user: User) {
+export function useVacationManagement(user: User, selectedShift: Shift) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
@@ -35,6 +35,7 @@ export function useVacationManagement(user: User) {
       {
         id: "1",
         userId: user.id,
+        shift: "1勤",
         startDate: "2024-12-25",
         endDate: "2024-12-27",
         type: "paid_leave",
@@ -47,6 +48,7 @@ export function useVacationManagement(user: User) {
       {
         id: "2",
         userId: user.id,
+        shift: "2勤",
         startDate: "2024-12-30",
         endDate: "2024-12-30",
         type: "personal_leave",
@@ -57,6 +59,7 @@ export function useVacationManagement(user: User) {
       {
         id: "3",
         userId: user.id,
+        shift: "1勤",
         startDate: "2024-11-20",
         endDate: "2024-11-21",
         type: "paid_leave",
@@ -69,6 +72,7 @@ export function useVacationManagement(user: User) {
       {
         id: "4",
         userId: user.id,
+        shift: "3勤",
         startDate: "2024-11-01",
         endDate: "2024-11-01",
         type: "sick_leave",
@@ -79,6 +83,11 @@ export function useVacationManagement(user: User) {
       },
     ],
     [user.id]
+  );
+
+  const filteredVacationRequests = useMemo(
+    () => vacationRequests.filter((request) => request.shift === selectedShift),
+    [selectedShift, vacationRequests]
   );
 
   const getStatusColor = useCallback((status: string) => {
@@ -154,6 +163,7 @@ export function useVacationManagement(user: User) {
     const newRequest: VacationRequest = {
       id: Date.now().toString(),
       userId: user.id,
+      shift: selectedShift,
       startDate,
       endDate,
       type: vacationType,
@@ -176,7 +186,7 @@ export function useVacationManagement(user: User) {
       title: "完了",
       message: "休暇申請を提出しました",
     };
-  }, [endDate, reason, startDate, user.id, vacationType]);
+  }, [endDate, reason, selectedShift, startDate, user.id, vacationType]);
 
   return {
     state: {
@@ -188,7 +198,7 @@ export function useVacationManagement(user: User) {
     },
     data: {
       vacationBalance,
-      vacationRequests,
+      vacationRequests: filteredVacationRequests,
     },
     utils: {
       getStatusColor,
