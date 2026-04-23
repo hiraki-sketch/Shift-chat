@@ -1,5 +1,14 @@
-import { useCallback, useMemo, useState } from "react";
-import type { Incident, Shift, User } from "../../types";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import type { Shift, User } from "../../types";
+import {
+  deleteIncidentReport,
+  fetchIncidentReports,
+  insertIncidentReport,
+  type InsertIncidentReportInput,
+  uploadIncidentPhotos,
+} from "../api/incidentReports";
+import { queryKeys } from "../lib/queryKeys";
 
 type Severity = "low" | "medium" | "high";
 
@@ -7,95 +16,224 @@ type SubmitResult =
   | { ok: true; title: string; message: string }
   | { ok: false; title: string; message: string };
 
+type SubmitIncidentReportPayload = InsertIncidentReportInput & {
+  photoUris: string[];
+};
+
+async function submitIncidentReportWithPhotos(payload: SubmitIncidentReportPayload): Promise<void> {
+  const { photoUris, ...insertInput } = payload;
+  if (!insertInput.departmentId) {
+    throw new Error("部署が未設定のため登録できません");
+  }
+  const photos = photoUris.map((uri) => ({
+    uri,
+    mimeType: undefined, 
+  }));
+  
+  const attachmentUrls = await uploadIncidentPhotos({
+    departmentId: insertInput.departmentId,
+    userId: insertInput.reportedBy,
+    photos,
+  });
+  await insertIncidentReport({ ...insertInput, attachmentUrls });
+}
+
 export function useIncidentReportManagement(user: User, selectedShift: Shift) {
+  const queryClient = useQueryClient();
   const [title, setTitle] = useState("");
-  const [description, setDescription] = useState("");
+  const [body, setBody] = useState("");
   const [severity, setSeverity] = useState<Severity>("medium");
   const [shift, setShift] = useState<Shift>(selectedShift);
-  const [occurredAt, setOccurredAt] = useState("");
-  const [photos, setPhotos] = useState<string[]>([]);
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const [showExistingReports, setShowExistingReports] = useState(false);
+  const [photoUris, setPhotoUris] = useState<string[]>([]);
 
-  const existingReports = useMemo<Incident[]>(
-    () => [
-      {
-        id: "1",
-        title: "機械異常音発生",
-        description: "ライン2の機械から異常音が発生しています。すぐに点検が必要です。",
-        severity: "high",
-        status: "open",
-        shift: "2勤",
-        department: user.department,
-        reportedBy: "作業者A",
-        reportedAt: "2024-12-20 14:30",
-        photos: [],
-        comments: [],
-      },
-      {
-        id: "2",
-        title: "品質チェック要注意",
-        description: "製品の寸法に若干のばらつきが見られます。",
-        severity: "medium",
-        status: "in_progress",
-        shift: "1勤",
-        department: user.department,
-        reportedBy: "検査員B",
-        reportedAt: "2024-12-20 10:15",
-        photos: [],
-        comments: [],
-      },
-    ],
-    [user.department]
+  useEffect(() => {
+    setShift(selectedShift);
+  }, [selectedShift]);
+
+  const listQueryKey = useMemo(
+    () => queryKeys.incidentReports.list(user.id, user.departmentId),
+    [user.id, user.departmentId]
   );
 
-  const handlePhotoUpload = useCallback(() => {
-    console.log("写真アップロード機能");
-  }, []);
+  const reportsQuery = useQuery({
+    queryKey: listQueryKey,
+    enabled: Boolean(user.departmentId),
+    queryFn: () => fetchIncidentReports(user.departmentId),
+  });
 
-  const removePhoto = useCallback((index: number) => {
-    setPhotos((prev) => prev.filter((_, i) => i !== index));
-  }, []);
+  const submitMutation = useMutation({
+    mutationFn: submitIncidentReportWithPhotos,
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: listQueryKey });
+      await queryClient.invalidateQueries({
+        queryKey: queryKeys.dashboard.summary(user.id, user.departmentId),
+      });
+    },
+  });
 
-  const canSubmit = title.trim().length > 0 && description.trim().length > 0;
+  const deleteMutation = useMutation({
+    mutationFn: async (reportId: string) =>
+      deleteIncidentReport({
+        reportId,
+        userId: user.id,
+        role: user.role,
+      }),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: listQueryKey });
+      await queryClient.invalidateQueries({
+        queryKey: queryKeys.dashboard.summary(user.id, user.departmentId),
+      });
+    },
+  });
+
+  const existingReports = reportsQuery.data ?? [];
+
+  const canSubmit = title.trim().length > 0 && body.trim().length > 0;
 
   const handleSubmit = useCallback(async (): Promise<SubmitResult> => {
     if (!canSubmit) {
       return { ok: false, title: "入力エラー", message: "必須項目を入力してください" };
     }
 
-    setIsSubmitting(true);
+    if (!user.departmentId) {
+      return {
+        ok: false,
+        title: "登録できません",
+        message: "プロフィールに部署が設定されていません",
+      };
+    }
 
-    const newReport: Incident = {
-      id: Date.now().toString(),
-      title,
-      description,
-      severity,
-      status: "open",
-      shift,
-      department: user.department,
-      reportedBy: user.displayName,
-      reportedAt: new Date().toISOString(),
-      photos,
-      comments: [],
-    };
+    try {
+      await submitMutation.mutateAsync({
+        departmentId: user.departmentId,
+        reportedBy: user.id,
+        title: title.trim(),
+        body: body.trim(),
+        severity,
+        shift,
+        photoUris,
+      });
 
-    console.log("新しい異常報告:", newReport);
+      setTitle("");
+      setBody("");
+      setSeverity("medium");
+      setShift(selectedShift);
+      setPhotoUris([]);
 
-    await new Promise((resolve) => setTimeout(resolve, 1000));
+      return { ok: true, title: "送信完了", message: "異常報告が送信されました" };
+    } catch (e) {
+      const message = e instanceof Error ? e.message : "送信に失敗しました";
+      return { ok: false, title: "送信エラー", message };
+    }
+  }, [
+    body,
+    canSubmit,
+    submitMutation,
+    photoUris,
+    selectedShift,
+    severity,
+    shift,
+    title,
+    user.departmentId,
+    user.id,
+  ]);
 
-    setIsSubmitting(false);
-    setTitle("");
-    setDescription("");
-    setSeverity("medium");
-    setPhotos([]);
-    setOccurredAt("");
+  const handlePickPhoto = useCallback(async (): Promise<SubmitResult> => {
+    let ImagePickerModule: any;
+    try {
+      ImagePickerModule = await import("expo-image-picker");
+    } catch {
+      return {
+        ok: false,
+        title: "未対応環境",
+        message:
+          "このビルドには写真選択モジュールが含まれていません。開発ビルドを再作成してください。",
+      };
+    }
 
-    return { ok: true, title: "送信完了", message: "異常報告が送信されました" };
-  }, [canSubmit, description, photos, severity, shift, title, user.department, user.displayName]);
+    const requestMediaLibraryPermissionsAsync =
+      ImagePickerModule?.requestMediaLibraryPermissionsAsync ??
+      ImagePickerModule?.default?.requestMediaLibraryPermissionsAsync;
+    const launchImageLibraryAsync =
+      ImagePickerModule?.launchImageLibraryAsync ??
+      ImagePickerModule?.default?.launchImageLibraryAsync;
+
+    if (
+      typeof requestMediaLibraryPermissionsAsync !== "function" ||
+      typeof launchImageLibraryAsync !== "function"
+    ) {
+      return {
+        ok: false,
+        title: "未対応環境",
+        message:
+          "このビルドでは写真選択APIを利用できません。開発ビルドを再作成してください。",
+      };
+    }
+
+    try {
+      const permission = await requestMediaLibraryPermissionsAsync();
+      if (!permission.granted) {
+        return {
+          ok: false,
+          title: "権限エラー",
+          message: "写真へのアクセス権限が必要です",
+        };
+      }
+
+      const result = await launchImageLibraryAsync({
+        mediaTypes: ["images"],
+        allowsMultipleSelection: true,
+        quality: 0.8,
+        selectionLimit: 3,
+      });
+
+      if (result.canceled) {
+        return { ok: true, title: "キャンセル", message: "写真の選択をキャンセルしました" };
+      }
+
+      const newUris = result.assets
+        .map((asset: { uri?: string }) => asset.uri)
+        .filter((uri: string | undefined): uri is string => Boolean(uri));
+
+      setPhotoUris((prev) => [...prev, ...newUris].slice(0, 3));
+
+      return { ok: true, title: "選択完了", message: "写真を添付しました" };
+    } catch {
+      return {
+        ok: false,
+        title: "未対応環境",
+        message:
+          "このビルドでは画像選択を利用できません。開発ビルドを再作成して再インストールしてください。",
+      };
+    }
+  }, []);
+
+  const removePhoto = useCallback((targetUri: string) => {
+    setPhotoUris((prev) => prev.filter((uri) => uri !== targetUri));
+  }, []);
+
+  const canDeleteReport = useCallback(
+    (report: { reportedBy: string }) => report.reportedBy === user.id || user.role === "admin",
+    [user.id, user.role]
+  );
+
+  const handleDeleteReport = useCallback(
+    async (reportId: string): Promise<SubmitResult> => {
+      try {
+        await deleteMutation.mutateAsync(reportId);
+        return { ok: true, title: "削除完了", message: "異常報告を削除しました" };
+      } catch (e) {
+        const message = e instanceof Error ? e.message : "削除に失敗しました";
+        return { ok: false, title: "削除エラー", message };
+      }
+    },
+    [deleteMutation]
+  );
 
   const getSeverityColor = useCallback((sev: string) => {
-    switch (sev) {
+    const x = sev.toLowerCase();
+    switch (x) {
       case "high":
         return "bg-red-500";
       case "medium":
@@ -108,7 +246,8 @@ export function useIncidentReportManagement(user: User, selectedShift: Shift) {
   }, []);
 
   const getSeverityText = useCallback((sev: string) => {
-    switch (sev) {
+    const x = sev.toLowerCase();
+    switch (x) {
       case "high":
         return "緊急";
       case "medium":
@@ -116,58 +255,19 @@ export function useIncidentReportManagement(user: User, selectedShift: Shift) {
       case "low":
         return "軽微";
       default:
-        return "不明";
+        return sev || "—";
     }
-  }, []);
-
-  const getStatusText = useCallback((status: string) => {
-    switch (status) {
-      case "open":
-        return "未対応";
-      case "in_progress":
-        return "対応中";
-      case "resolved":
-        return "解決";
-      case "closed":
-        return "完了";
-      default:
-        return "不明";
-    }
-  }, []);
-
-  const getStatusBadgeVariant = useCallback(
-    (status: string): "destructive" | "default" | "secondary" | "outline" => {
-      switch (status) {
-        case "open":
-          return "destructive";
-        case "in_progress":
-          return "default";
-        case "resolved":
-          return "secondary";
-        case "closed":
-          return "outline";
-        default:
-          return "outline";
-      }
-    },
-    []
-  );
-
-  const generatePDF = useCallback((report: Incident) => {
-    console.log("PDF生成:", report);
-    return { title: "PDF生成", message: `"${report.title}" のPDFを生成しました` };
   }, []);
 
   return {
     state: {
       title,
-      description,
+      body,
       severity,
       shift,
-      occurredAt,
-      photos,
-      isSubmitting,
+      isSubmitting: submitMutation.isPending,
       showExistingReports,
+      photoUris,
     },
     data: {
       existingReports,
@@ -178,21 +278,24 @@ export function useIncidentReportManagement(user: User, selectedShift: Shift) {
     utils: {
       getSeverityColor,
       getSeverityText,
-      getStatusText,
-      getStatusBadgeVariant,
+      canDeleteReport,
     },
     actions: {
       setTitle,
-      setDescription,
+      setBody,
       setSeverity,
       setShift,
-      setOccurredAt,
       setShowExistingReports,
-      handlePhotoUpload,
-      removePhoto,
       handleSubmit,
-      generatePDF,
+      handlePickPhoto,
+      removePhoto,
+      handleDeleteReport,
+    },
+    query: {
+      isPending: reportsQuery.isPending,
+      isError: reportsQuery.isError,
+      error: reportsQuery.error,
+      refetch: reportsQuery.refetch,
     },
   };
 }
-

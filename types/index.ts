@@ -1,9 +1,12 @@
 export interface User {
   id: string;
   displayName: string;
+  departmentId: string | null;
+  departmentName: string| null;
+  // 互換用（段階移行が終わったら削除）
   department: string;
   email: string;
-  role?: 'admin' | 'manager' | 'user';
+  role?: 'admin' | 'manager' | 'member';
 }
 
 export type Shift = '1勤' | '2勤' | '3勤';
@@ -39,23 +42,25 @@ export interface Message {
   createdAt: string;
 }
 
+/** Supabase `incident_reports` のカラムに対応 */
 export interface Incident {
   id: string;
   title: string;
-  description: string;
-  severity: 'low' | 'medium' | 'high';
-  status: 'open' | 'in_progress' | 'resolved' | 'closed';
+  body: string;
+  attachmentUrls?: string[];
+  severity: string;
   shift: Shift;
-  department: string;
+  departmentId: string;
   reportedBy: string;
-  reportedAt: string;
-  photos: string[];
-  comments: any[];
+  reporterName?: string | null;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface VacationRequest {
   id: string;
   userId: string;
+  shift?: Shift;
   startDate: string;
   endDate: string;
   type: 'paid_leave' | 'sick_leave' | 'personal_leave' | 'compensatory_leave';

@@ -1,17 +1,16 @@
-//incident-report.tsx
-import { Alert, Image, ScrollView, Text, View } from 'react-native';
+import { Image } from "expo-image";
+import { ImagePlus, Trash2, X } from "lucide-react-native";
+import { ActivityIndicator, Alert, Pressable, ScrollView, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { Shift, User } from '../types';
 import { useIncidentReportManagement } from "../src/hooks/useIncidentReportManagement";
-import { FileText, MessageCircle } from './ui/icons';
-import { Badge } from './ui/badge';
-import { Button } from './ui/button';
-import { Card } from './ui/card';
-import { Input } from './ui/input';
-import { Label } from './ui/label';
-//import { supabase } from "@/lib/supabase";
+import { Shift, User } from "../types";
+import { AppHeader } from "./ui/app-header";
+import { Badge } from "./ui/badge";
+import { Button } from "./ui/button";
+import { Card } from "./ui/card";
+import { Input } from "./ui/input";
+import { Label } from "./ui/label";
 
-// 異常報告画面 Props
 interface IncidentReportProps {
   user: User;
   selectedShift: Shift;
@@ -19,256 +18,320 @@ interface IncidentReportProps {
 }
 
 export function IncidentReport({ user, selectedShift, onNavigate }: IncidentReportProps) {
-  const { state, data, derived, utils, actions } = useIncidentReportManagement(user, selectedShift);
-  const { title, description, severity, shift, occurredAt, photos, isSubmitting, showExistingReports } = state;
+  const { state, data, derived, utils, actions, query } = useIncidentReportManagement(
+    user,
+    selectedShift
+  );
+
+  const { isPending, isError, error, refetch } = query;
+  const { title, body, severity, shift, isSubmitting, showExistingReports, photoUris } = state;
   const { existingReports } = data;
   const { canSubmit } = derived;
-  const { getSeverityColor, getSeverityText, getStatusText, getStatusBadgeVariant } = utils;
+  const { getSeverityColor, getSeverityText, canDeleteReport } = utils;
   const {
     setTitle,
-    setDescription,
+    setBody,
     setSeverity,
     setShift,
-    setOccurredAt,
     setShowExistingReports,
-    handlePhotoUpload,
-    removePhoto,
     handleSubmit,
-    generatePDF,
+    handlePickPhoto,
+    removePhoto,
+    handleDeleteReport,
   } = actions;
 
   return (
-    <SafeAreaView className="flex-1">
-      <ScrollView className="flex-1 bg-background">
-        {/* ヘッダー */}
-        <View className="bg-emerald-500 shadow-sm border-b border-emerald-700">
-          <View className="px-4">
-            <View className="flex-row items-center justify-between h-16">
-              <View className="flex-row items-center">
-                <Button
-                  variant="ghost"
-                  onPress={() => onNavigate('index')}
-                  className="p-2"
-                >
-                  <Text>←</Text>
-                </Button>
-                <View className="ml-3">
-                  <Text className="text-xl font-semibold text-foreground">異常報告</Text>
-                  <Text className="text-sm text-muted-foreground">{user?.department ?? '—'} - {selectedShift}</Text>
-                </View>
-              </View>
-              <Button
-                variant="outline"
-                onPress={() => setShowExistingReports(!showExistingReports)}
-              >
-                {showExistingReports ? '新規作成' : '既存報告'}
-              </Button>
-            </View>
-          </View>
-        </View>
+    <SafeAreaView className="flex-1 bg-background">
+      <AppHeader
+        title="異常報告"
+        subtitle={`${user?.department ?? "—"} ・ ${selectedShift}`}
+        onBack={() => onNavigate("index")}
+        variant="emerald"
+        rightSlot={
+          <Button
+            variant="outline"
+            onPress={() => setShowExistingReports(!showExistingReports)}
+            className="border-white bg-transparent"
+          >
+            <Text className="text-white">{showExistingReports ? "新規作成" : "既存報告"}</Text>
+          </Button>
+        }
+      />
 
-        <View className="px-4 py-6">
+      {/* Body */}
+      <View className="flex-1">
+        <ScrollView
+          className="flex-1 bg-background"
+          contentContainerStyle={{
+            flexGrow: 1,
+            paddingHorizontal: 16,
+            paddingTop: 24,
+            paddingBottom: showExistingReports ? 24 : 120,
+          }}
+          keyboardShouldPersistTaps="handled"
+        >
           {showExistingReports ? (
-            // 既存報告一覧
             <View className="gap-4">
               <Text className="text-lg font-semibold mb-2">既存の異常報告</Text>
-              {existingReports.map((report) => (
-                <Card key={report.id}>
-                  <View className="pb-3">
-                    <View className="flex-row items-start justify-between">
-                      <View className="flex-row items-center">
-                        <View className={`w-4 h-4 rounded-full ${getSeverityColor(report.severity)}`} />
-                        <View className="ml-3">
-                          <Text className="text-lg font-semibold">{report.title}</Text>
-                          <View className="flex-row items-center mt-1">
-                            <Badge variant={getStatusBadgeVariant(report.status)}>
-                              {getStatusText(report.status)}
-                            </Badge>
-                            <View className="w-2" />
-                            <Badge variant="outline">{getSeverityText(report.severity)}</Badge>
-                            <View className="w-2" />
-                            <Badge variant="secondary">{report.shift}</Badge>
-                          </View>
+
+              {!user.departmentId && (
+                <Text className="text-muted-foreground">
+                  プロフィールに部署が設定されていないため、一覧を取得できません。
+                </Text>
+              )}
+
+              {user.departmentId && isPending && <ActivityIndicator className="py-6" />}
+
+              {user.departmentId && isError && (
+                <View className="py-4">
+                  <Text className="text-destructive">
+                    {error instanceof Error ? error.message : "読み込みに失敗しました"}
+                  </Text>
+                  <Pressable onPress={() => refetch()} className="mt-2 self-start">
+                    <Text className="text-primary font-medium">再試行</Text>
+                  </Pressable>
+                </View>
+              )}
+
+              {user.departmentId &&
+                !isPending &&
+                !isError &&
+                existingReports.map((report) => (
+                  <Card key={report.id} className="min-w-0 overflow-hidden">
+                    <View className="p-4 min-w-0">
+                      <View className="pb-3 min-w-0">
+                        <Text className="text-lg font-semibold" selectable>
+                          {report.title}
+                        </Text>
+                        <View className="flex-row flex-wrap items-center gap-2 mt-2">
+                          <View className={`w-3 h-3 rounded-full shrink-0 ${getSeverityColor(report.severity)}`} />
+                          <Badge variant="outline">{getSeverityText(report.severity)}</Badge>
+                          <Badge variant="secondary">{report.shift}</Badge>
                         </View>
                       </View>
-                      <View className="flex-row">
-                        <Button
-                          variant="outline"
-                          onPress={() => {
-                            const res = generatePDF(report);
-                            Alert.alert(res.title, res.message);
-                          }}
-                          className="px-3 py-2"
-                        >
-                          <FileText size={16} color="#374151" />
-                          <Text className="ml-1 text-foreground">PDF</Text>
-                        </Button>
-                      </View>
-                    </View>
-                  </View>
-                  <View>
-                    <Text className="text-foreground mb-3">{report.description}</Text>
-                    <View className="flex-row items-center">
-                      <View className="flex-row items-center">
-                        <Text>👤</Text>
-                        <Text className="text-sm text-muted-foreground ml-1">{report.reportedBy}</Text>
-                      </View>
-                      <View className="w-4" />
-                      <View className="flex-row items-center">
-                        <Text>🕐</Text>
-                        <Text className="text-sm text-muted-foreground ml-1">
-                          {new Date(report.reportedAt).toLocaleString('ja-JP')}
+
+                      <View className="min-w-0">
+                        <Text className="text-foreground mb-3" selectable>
+                          {report.body}
                         </Text>
-                      </View>
-                      <View className="w-4" />
-                      <View className="flex-row items-center">
-                        <MessageCircle size={16} color="#6B7280" />
-                        <Text className="text-sm text-muted-foreground ml-1">{report.comments.length} コメント</Text>
+                        {!!report.attachmentUrls?.length && (
+                          <ScrollView
+                            horizontal
+                            showsHorizontalScrollIndicator={false}
+                            className="mb-3"
+                            contentContainerStyle={{ gap: 8 }}
+                          >
+                            {report.attachmentUrls.map((url) => (
+                              <Image
+                                key={url}
+                                source={{ uri: url }}
+                                style={{ width: 96, height: 96, borderRadius: 8 }}
+                                contentFit="cover"
+                              />
+                            ))}
+                          </ScrollView>
+                        )}
+                        <Text className="text-xs text-muted-foreground" numberOfLines={1}>
+                          投稿者: {report.reporterName ?? "不明"}
+                        </Text>
+                        <Text className="text-xs text-muted-foreground" numberOfLines={2}>
+                          作成: {new Date(report.createdAt).toLocaleString("ja-JP")}
+                        </Text>
+                        <Text className="text-xs text-muted-foreground" numberOfLines={2}>
+                          更新: {new Date(report.updatedAt).toLocaleString("ja-JP")}
+                        </Text>
+                        {canDeleteReport(report) && (
+                          <View className="mt-3">
+                            <Button
+                              variant="outline"
+                              onPress={() => {
+                                Alert.alert("異常報告の削除", "この報告を削除します。よろしいですか？", [
+                                  { text: "キャンセル", style: "cancel" },
+                                  {
+                                    text: "削除",
+                                    style: "destructive",
+                                    onPress: async () => {
+                                      const res = await handleDeleteReport(report.id);
+                                      Alert.alert(res.title, res.message);
+                                    },
+                                  },
+                                ]);
+                              }}
+                              className="border-destructive"
+                            >
+                              <Trash2 size={16} color="#dc2626" />
+                              <Text className="ml-2 text-destructive">削除</Text>
+                            </Button>
+                          </View>
+                        )}
                       </View>
                     </View>
-                  </View>
-                </Card>
-              ))}
+                  </Card>
+                ))}
             </View>
           ) : (
-            // 新規報告フォーム
-            <View className="gap-6">
-              <Card>
-                <View className="mb-4">
-                  <Text className="text-xl font-semibold">新しい異常報告</Text>
-                </View>
-                <View className="gap-4">
-                  <View className="flex-row">
-                    <View className="flex-1 mr-2">
-                      <Label>タイトル *</Label>
-                      <Input
-                        value={title}
-                        onChangeText={setTitle}
-                        placeholder="異常の概要等を入力"
-                      />
-                    </View>
-                    <View className="flex-1 ml-2">
-                      <Label>発生日時</Label>
-                      <Input
-                        value={occurredAt}
-                        onChangeText={setOccurredAt}
-                        placeholder="勤務帯、時刻、日付"
-                      />
-                    </View>
+            <View className="gap-6 flex-1 min-w-0">
+              <Card className="min-w-0 overflow-hidden">
+                <View className="p-4 min-w-0">
+                  <View className="mb-4 min-w-0">
+                    <Text className="text-xl font-semibold">新しい異常報告</Text>
                   </View>
 
-                  <View>
-                    <Label>詳細内容 *</Label>
+                  <View className="gap-4 min-w-0">
+                  <View className="min-w-0">
+                    <Label>タイトル *</Label>
                     <Input
-                      value={description}
-                      onChangeText={setDescription}
-                      placeholder="異常の詳細、発生場所、状況などを詳しく記入してください"
-                      multiline={true}
-                      numberOfLines={4}
+                      value={title}
+                      onChangeText={setTitle}
+                      placeholder="異常の概要を入力"
+                      className="w-full min-w-0"
                     />
                   </View>
 
-                  <View className="flex-row">
-                    <View className="flex-1 mr-2">
-                      <Label>重大度 *</Label>
-                      <View className="flex-row">
-                        {(['low', 'medium', 'high'] as const).map((sev) => (
-                          <Button
-                            key={sev}
-                            variant={severity === sev ? 'default' : 'outline'}
-                            onPress={() => setSeverity(sev)}
-                            className="flex-1 mr-2"
-                          >
-                            <View className={`w-3 h-3 rounded-full mr-2 ${getSeverityColor(sev)}`} />
-                            <Text>{getSeverityText(sev)}</Text>
-                          </Button>
-                        ))}
-                      </View>
+                  <View className="min-w-0">
+                    <Label>本文 *</Label>
+                    <Input
+                      value={body}
+                      onChangeText={setBody}
+                      placeholder="詳細を記入してください"
+                      multiline
+                      numberOfLines={6}
+                      className="w-full min-w-0 min-h-[120px] align-top"
+                      textAlignVertical="top"
+                    />
+                  </View>
+
+                  <View className="min-w-0">
+                    <Label>写真添付（任意・最大3枚）</Label>
+                    <View className="mt-2">
+                      <Button
+                        variant="outline"
+                        onPress={async () => {
+                          const res = await handlePickPhoto();
+                          if (!res.ok) {
+                            Alert.alert(res.title, res.message);
+                          }
+                        }}
+                        className="flex-row items-center justify-center"
+                        disabled={photoUris.length >= 3}
+                      >
+                        <ImagePlus size={16} color="#0f172a" />
+                        <Text className="ml-2">
+                          {photoUris.length >= 3 ? "3枚選択済み" : "写真を選択"}
+                        </Text>
+                      </Button>
                     </View>
-                    <View className="flex-1 ml-2">
-                      <Label>勤務帯 *</Label>
-                      <View className="flex-row">
-                        {(['1勤', '2勤', '3勤'] as const).map((s) => (
-                          <Button
-                            key={s}
-                            variant={shift === s ? 'default' : 'outline'}
-                            onPress={() => setShift(s)}
-                            className="flex-1 mr-2"
-                          >
-                            <Text>{s}</Text>
-                          </Button>
+                    {!!photoUris.length && (
+                      <ScrollView
+                        horizontal
+                        className="mt-3"
+                        showsHorizontalScrollIndicator={false}
+                        contentContainerStyle={{ gap: 8 }}
+                      >
+                        {photoUris.map((uri) => (
+                          <View key={uri} className="relative">
+                            <Image
+                              source={{ uri }}
+                              style={{ width: 96, height: 96, borderRadius: 8 }}
+                              contentFit="cover"
+                            />
+                            <Pressable
+                              onPress={() => removePhoto(uri)}
+                              className="absolute -top-2 -right-2 bg-black/70 rounded-full p-1"
+                            >
+                              <X size={14} color="#fff" />
+                            </Pressable>
+                          </View>
                         ))}
-                      </View>
+                      </ScrollView>
+                    )}
+                  </View>
+
+                  <View className="min-w-0">
+                    <Label>重大度 *</Label>
+                    <View className="flex-row gap-3 mt-2 min-w-0">
+                      {(["low", "medium", "high"] as const).map((sev) => (
+                        <Button
+                          key={sev}
+                          variant={severity === sev ? "default" : "outline"}
+                          onPress={() => setSeverity(sev)}
+                          className="flex-1 min-h-12 min-w-0 flex-row items-center justify-center px-1"
+                        >
+                          <View className={`w-3 h-3 rounded-full mr-2 ${getSeverityColor(sev)}`} />
+                          <Text
+                            numberOfLines={1}
+                            className={`text-sm font-medium ${
+                              severity === sev ? "text-gray-50" : "text-foreground"
+                            }`}
+                          >
+                            {getSeverityText(sev)}
+                          </Text>
+                        </Button>
+                      ))}
                     </View>
                   </View>
 
-                  <View>
-                    <Label>写真添付</Label>
-                    <View className="gap-3">
-                      <View className="flex-row items-center">
+                  <View className="min-w-0">
+                    <Label>勤務帯 *</Label>
+                    <View className="flex-row gap-3 mt-2 min-w-0">
+                      {(["1勤", "2勤", "3勤"] as const).map((s) => (
                         <Button
-                          variant="outline"
-                          onPress={handlePhotoUpload}
-                          className="flex-row items-center px-3 py-2"
+                          key={s}
+                          variant={shift === s ? "default" : "outline"}
+                          onPress={() => setShift(s)}
+                          className="flex-1 min-h-12 min-w-0 items-center justify-center px-1"
                         >
-                          <Text>📷</Text>
-                          <Text className="ml-2">写真を追加 ({photos.length}/10)</Text>
+                          <Text
+                            numberOfLines={1}
+                            className={`text-sm font-medium ${
+                              shift === s ? "text-gray-50" : "text-foreground"
+                            }`}
+                          >
+                            {s}
+                          </Text>
                         </Button>
-                      </View>
-                      {photos.length > 0 && (
-                        <View className="flex-row flex-wrap">
-                          {photos.map((photo, index) => (
-                            <View key={index} className="relative" style={{ width: '30%', marginRight: '3.333%', marginBottom: 12 }}>
-                              <Image
-                                source={{ uri: photo }}
-                                className="w-full h-24 rounded-lg border"
-                                resizeMode="cover"
-                              />
-                              <Button
-                                variant="destructive"
-                                onPress={() => removePhoto(index)}
-                                className="absolute -top-2 -right-2 h-6 w-6 items-center justify-center p-0"
-                              >
-                                <Text className="text-white">✕</Text>
-                              </Button>
-                            </View>
-                          ))}
-                        </View>
-                      )}
+                      ))}
                     </View>
+                  </View>
                   </View>
                 </View>
               </Card>
 
-              <View className="p-4 bg-white rounded-lg">
+              <View className="p-4 bg-white rounded-lg min-w-0">
                 <Text className="text-foreground">
-                  報告送信後、関係者に通知が送信されます。緊急度が高い場合は、直接連絡も行ってください。
+                  報告送信後、関係者への共有フローは別途運用に合わせてください。
                 </Text>
-              </View>
-
-              <View className="flex-row">
-                <Button
-                  variant="outline"
-                  onPress={() => onNavigate('index')}
-                  className="flex-1 mr-2"
-                >
-                  キャンセル
-                </Button>
-                <Button
-                  onPress={async () => {
-                    const res = await handleSubmit();
-                    Alert.alert(res.title, res.message);
-                  }}
-                  disabled={isSubmitting || !canSubmit}
-                  className="flex-1 ml-2"
-                >
-                  {isSubmitting ? '送信中...' : '異常報告を送信'}
-                </Button>
               </View>
             </View>
           )}
-        </View>
-      </ScrollView>
+        </ScrollView>
+
+        {/* Bottom fixed action bar */}
+        {!showExistingReports && (
+          <View className="px-4 py-3 border-t border-border bg-background min-w-0">
+            <View className="flex-row min-w-0 gap-2">
+              <Button
+                variant="outline"
+                onPress={() => onNavigate("index")}
+                className="flex-1 min-w-0"
+              >
+                キャンセル
+              </Button>
+
+              <Button
+                onPress={async () => {
+                  const res = await handleSubmit();
+                  Alert.alert(res.title, res.message);
+                }}
+                disabled={isSubmitting || !canSubmit}
+                className="flex-1 min-w-0"
+              >
+                {isSubmitting ? "送信中..." : "異常報告を送信"}
+              </Button>
+            </View>
+          </View>
+        )}
+      </View>
     </SafeAreaView>
   );
 }
