@@ -16,7 +16,7 @@
 
 3. **スタイリング**
    - `className`はそのままNativeWind形式で使用可能
-   - Tailwind CSSのクラスがそのまま適用されます
+   - Tailwind CSSのクラスがそのまま適用。
 
 4. **アイコン**
    - Lucide Reactアイコンを絵文字ベースのアイコンに変換

@@ -48,3 +48,28 @@ Join our community of developers creating universal apps.
 
 - [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
 - [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+
+## ヘッダーコンポーネント運用ルール
+
+### 目的
+- アプリ内画面のヘッダー挙動と見た目を統一する。
+- レイアウトの重複実装を減らし、将来のデザイン変更を安全にする。
+
+### 基本ルール
+- 通常のアプリ内画面では `components/ui/AppHeader` を使用する。
+- 戻る動作は `onBack` で渡す。
+- 画面固有アクション（例: `新規作成`、`フィルター`、`ログアウト`）は `rightSlot` で渡す。
+
+### 例外ルール
+- 認証画面（`Login`、`Auth`、`ResetPassword`）には `AppHeader` を強制しない。
+- 全画面専用デザインやモーダル専用ヘッダーなどの特殊画面には `AppHeader` を強制しない。
+
+### `HeaderBackButton` について
+- `HeaderBackButton` は現在も使用している。
+- 各画面ファイルで `HeaderBackButton` を直接配置するのは原則避ける。
+- `AppHeader` の内部で `HeaderBackButton` を利用し、戻る操作を統一する。
+
+### 新規画面チェックリスト
+- 通常のアプリ内画面か？ -> `AppHeader` を使う。
+- 認証画面・特殊画面か？ -> 個別ヘッダー可。
+- 個別ヘッダーを使う場合は、コードコメントか PR 説明に短く理由を残す。

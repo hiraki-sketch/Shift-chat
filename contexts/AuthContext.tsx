@@ -1,6 +1,11 @@
-// AuthContext.tsx
 import { supabase } from "@/lib/supabase";
+import {
+  getSignUpEmailRedirectTo,
+  tryConsumeAuthDeepLinkUrl,
+} from "@/lib/supabase/authRedirect";
 import type { AuthChangeEvent, Session, User } from "@supabase/supabase-js";
+import * as Linking from "expo-linking";
+import { useRouter } from "expo-router";
 import React, {
   createContext,
   useCallback,
@@ -19,212 +24,140 @@ type AuthContextType = {
     email: string,
     password: string,
     displayName: string,
-    department: string
+    departmentId: string
   ) => Promise<{ data: { user?: { identities?: unknown[] } | null } | null; error: any }>;
   signOut: () => Promise<void>;
   refreshUser: () => Promise<void>;
 };
 
+type ProfileWithDepartment = {
+  id: string;
+  email: string | null;
+  display_name: string | null;
+  department_id: string | null;
+  role: "member" | "manager" | "admin" | null;
+  departments: { id: string; name: string } | { id: string; name: string }[] | null;
+};
+
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+function toAppUser(profile: ProfileWithDepartment): AppUser {
+  const departmentName =
+    profile.departments && Array.isArray(profile.departments)
+      ? (profile.departments[0]?.name ?? "")
+      : (profile.departments?.name ?? "");
+
+  return {
+    id: profile.id,
+    email: profile.email ?? "",
+    displayName: profile.display_name ?? "",
+    departmentId: profile.department_id ?? null,
+    departmentName,
+    // 既存画面が user.department を参照しているため当面は同値で保持
+    department: departmentName ?? null,
+    role: profile.role ?? "member",
+  };
+}
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
+  const router = useRouter();
   const [user, setUser] = useState<AppUser | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const resolveDepartmentIdByName = useCallback(
-    async (departmentName?: string | null): Promise<string | null> => {
-      if (!departmentName) return null;
-      const { data, error } = await supabase
-        .from("departments")
-        .select("id")
-        .eq("name", departmentName)
-        .maybeSingle();
-      if (error) {
-        console.warn("[Auth] 部署IDの解決に失敗", error);
-        return null;
-      }
-      return data?.id ?? null;
-    },
-    []
-  );
+  const getProfileById = useCallback(async (id: string) => {
+    return supabase
+      .from("profiles")
+      .select(
+        "id,email,display_name,department_id,role,departments ( id, name )"
+      )
+      .eq("id", id)
+      .maybeSingle<ProfileWithDepartment>();
+  }, []);
 
-  const resolveDepartmentNameById = useCallback(
-    async (departmentId?: string | null): Promise<string | null> => {
-      if (!departmentId) return null;
-      const { data, error } = await supabase
-        .from("departments")
-        .select("name")
-        .eq("id", departmentId)
-        .maybeSingle();
-      if (error) {
-        console.warn("[Auth] 部署名の解決に失敗", error);
-        return null;
-      }
-      return data?.name ?? null;
-    },
-    []
-  );
-
-  /**
-   * profilesテーブルにプロフィール行が無い場合に作る
-   * - signUp時の user_metadata（display_name/department）から初期値を拾う想定
-   * - 既に行があるのに insert すると重複エラーになるので、23505(ユニーク制約違反)は握りつぶす
-   */
   const createProfileIfMissing = useCallback(async (supabaseUser: User) => {
-    console.log("[Auth] createProfileIfMissing: start", supabaseUser.id);
-
-    const display_name =
+    const displayNameMeta =
       (supabaseUser.user_metadata?.display_name as string | undefined) ?? null;
-    const departmentName =
-      (supabaseUser.user_metadata?.department as string | undefined) ?? null;
-    const departmentId = await resolveDepartmentIdByName(departmentName);
+    const departmentIdMeta =
+      (supabaseUser.user_metadata?.department_id as string | undefined) ?? null;
 
     const { error } = await supabase.from("profiles").insert({
       id: supabaseUser.id,
-      email: supabaseUser.email,
-      display_name,
-      department_id: departmentId,
+      email: supabaseUser.email ?? null,
+      display_name: displayNameMeta,
+      department_id: departmentIdMeta || null,
+      role: "member",
     });
 
-    if (error?.code === "23505") {
-      console.log("[Auth] createProfileIfMissing: 既存ユーザー(23505)");
-      return { insertError: null };
-    }
+    if (error?.code === "23505") return { insertError: null };
     if (error) console.warn("[Auth] createProfileIfMissing: insert error", error);
     return { insertError: error };
-  }, [resolveDepartmentIdByName]);
+  }, []);
 
-  /*
-   * 認証ユーザー(User) → DB(profilesテーブル)のプロフィールを取得して setUser する
-   * - プロフィールが無い場合は作成
-   * - プロフィールがあるが display_name/department が null の場合は user_metadata から更新
-   */
   const fetchUserProfile = useCallback(
     async (supabaseUser: User) => {
-      console.log("[Auth] fetchUserProfile: start", supabaseUser.id);
-
-      const { data, error } = await supabase
-        .from("profiles")
-        .select("id,email,display_name,department_id")
-        .eq("id", supabaseUser.id)
-        .maybeSingle();
-
-      // 取得時にエラー（RLS/権限/ネットワーク/SQL等）が出たら終了
-      if (error) {
-        console.error("[Auth] fetchUserProfile: 取得失敗", error);
+      const initial = await getProfileById(supabaseUser.id);
+      if (initial.error) {
+        console.error("[Auth] fetchUserProfile: 取得失敗", initial.error);
         return;
       }
 
-      // プロフィールが無い（0件）なら作成→再取得
-      if (!data) {
-        console.log("[Auth] fetchUserProfile: プロフィールなし→作成");
+      let profile = initial.data;
+
+      if (!profile) {
         const { insertError } = await createProfileIfMissing(supabaseUser);
         if (insertError) {
-          console.error("[Auth] プロフィール作成失敗", insertError);
+          console.error("[Auth] fetchUserProfile: プロフィール作成失敗", insertError);
           return;
         }
-
-        const retry = await supabase
-          .from("profiles")
-          .select("id,email,display_name,department_id")
-          .eq("id", supabaseUser.id)
-          .maybeSingle();
-
+        const retry = await getProfileById(supabaseUser.id);
         if (retry.error || !retry.data) {
-          console.error("[Auth] 再取得ミス", retry.error);
+          console.error("[Auth] fetchUserProfile: 再取得失敗", retry.error);
           return;
         }
-
-        const retryDepartmentName = await resolveDepartmentNameById(
-          retry.data.department_id
-        );
-        setUser({
-          id: retry.data.id,
-          email: retry.data.email,
-          displayName: retry.data.display_name,
-          department: retryDepartmentName ?? "",
-        });
-        console.log("[Auth] fetchUserProfile: 作成後セット完了");
-        return;
+        profile = retry.data;
       }
 
-      // プロフィールが存在するが、display_name や department が null の場合
-      // user_metadata から更新を試みる
+      const metadataDisplayName =
+        (supabaseUser.user_metadata?.display_name as string | undefined) ?? null;
+      const metadataDepartmentId =
+        (supabaseUser.user_metadata?.department_id as string | undefined) ?? null;
+
       const needsUpdate =
-        (!data.display_name || !data.department_id) &&
-        (supabaseUser.user_metadata?.display_name || supabaseUser.user_metadata?.department);
+        (!profile.display_name || !profile.department_id) &&
+        (metadataDisplayName || metadataDepartmentId);
 
       if (needsUpdate) {
-        console.log("[Auth] fetchUserProfile: プロフィール更新が必要");
-        const metadataDepartmentName =
-          (supabaseUser.user_metadata?.department as string | undefined) ?? null;
-        const metadataDepartmentId = await resolveDepartmentIdByName(
-          metadataDepartmentName
-        );
         const { error: updateError } = await supabase
           .from("profiles")
           .update({
-            display_name:
-              data.display_name ||
-              (supabaseUser.user_metadata?.display_name as string | undefined) ||
-              null,
-            department_id: data.department_id || metadataDepartmentId || null,
+            display_name: profile.display_name || metadataDisplayName || null,
+            department_id:
+              profile.department_id || metadataDepartmentId || null,
           })
           .eq("id", supabaseUser.id);
 
-        if (updateError) {
-          console.warn("[Auth] プロフィール更新失敗", updateError);
+        if (!updateError) {
+          const updated = await getProfileById(supabaseUser.id);
+          if (updated.data) profile = updated.data;
         } else {
-          // 更新後、再取得
-          const updated = await supabase
-            .from("profiles")
-            .select("id,email,display_name,department_id")
-            .eq("id", supabaseUser.id)
-            .maybeSingle();
-
-          if (updated.data) {
-            const updatedDepartmentName = await resolveDepartmentNameById(
-              updated.data.department_id
-            );
-            setUser({
-              id: updated.data.id,
-              email: updated.data.email,
-              displayName: updated.data.display_name,
-              department: updatedDepartmentName ?? "",
-            });
-            console.log("[Auth] fetchUserProfile: 更新後セット完了");
-            return;
-          }
+          console.warn("[Auth] fetchUserProfile: 補完更新失敗", updateError);
         }
       }
 
-      // 取得できたらアプリ用の形に変換して state に保存
-      const departmentName = await resolveDepartmentNameById(data.department_id);
-      setUser({
-        id: data.id,
-        email: data.email,
-        displayName: data.display_name,
-        department: departmentName ?? "",
-      });
-      console.log("[Auth] fetchUserProfile: セット完了", data.email);
+      setUser(toAppUser(profile));
     },
-    [createProfileIfMissing, resolveDepartmentIdByName, resolveDepartmentNameById]
+    [createProfileIfMissing, getProfileById]
   );
 
   useEffect(() => {
-    console.log("[Auth] useEffect: 初期化開始");
     let mounted = true;
-
-    // 起動時に「ログイン中かどうか」を確定させる初期化処理
     const INIT_TIMEOUT_MS = 15_000;
 
     const initializeAuth = async () => {
       let timedOut = false;
-
       const timeoutId = setTimeout(() => {
         timedOut = true;
         if (mounted) {
-          console.warn("[Auth] init timeout: forcing loading=false");
           setLoading(false);
           setUser(null);
         }
@@ -232,29 +165,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       try {
         if (mounted) setLoading(true);
-
         const { data, error } = await supabase.auth.getSession();
-        console.log("[Auth] initializeAuth: getSession 完了", {
-          hasSession: !!data.session,
-          hasError: !!error,
-        });
-
-        if (timedOut) return; // タイムアウト後に遅れて返ってきても上書きしない
+        if (timedOut) return;
         if (error) throw error;
 
-        const session = data.session;
-        if (session?.user) {
-          await fetchUserProfile(session.user);
-        } else {
-          if (mounted) setUser(null);
+        if (data.session?.user) {
+          await fetchUserProfile(data.session.user);
+        } else if (mounted) {
+          setUser(null);
         }
       } catch (e) {
-        console.error("[Auth] initializeAuth: エラー", e);
+        console.error("[Auth] initializeAuth error", e);
         if (mounted) setUser(null);
       } finally {
         clearTimeout(timeoutId);
         if (mounted) setLoading(false);
-        console.log("[Auth] initializeAuth: 完了 loading=false");
       }
     };
 
@@ -264,16 +189,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     const { data: sub } = supabase.auth.onAuthStateChange(
       async (event: AuthChangeEvent, session: Session | null) => {
-        console.log(
-          "[Auth] onAuthStateChange:",
-          event,
-          session?.user?.id ?? "no user"
-        );
-
-        // 無視するイベント（起動時やトークン更新など）
         if (IGNORED_EVENTS.includes(event)) return;
-
-        // パスワードリセット中は別フロー
         if (event === "PASSWORD_RECOVERY") {
           if (mounted) {
             setUser(null);
@@ -289,24 +205,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               if (mounted) setLoading(true);
               await fetchUserProfile(session.user);
               break;
-
             case "SIGNED_OUT":
               if (mounted) setUser(null);
               break;
-
-            // 必要になったら追加（基本は不要）
-            // case "USER_UPDATED":
-            //   if (session?.user) {
-            //     if (mounted) setLoading(true);
-            //     await fetchUserProfile(session.user);
-            //   }
-            //   break;
-
             default:
-              console.log("[Auth] 未処理のイベント:", event);
+              break;
           }
         } catch (e) {
-          console.error("[Auth] onAuthStateChange: エラー", e);
+          console.error("[Auth] onAuthStateChange error", e);
           if (mounted) setUser(null);
         } finally {
           if (mounted) setLoading(false);
@@ -320,32 +226,39 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
   }, [fetchUserProfile]);
 
-  /** パスワードログイン */
+  useEffect(() => {
+    const handle = async (url: string | null) => {
+      if (!url) return;
+      const { applied, isPasswordRecovery } = await tryConsumeAuthDeepLinkUrl(url);
+      if (applied && isPasswordRecovery) {
+        router.replace("/reset-password");
+      }
+    };
+    void Linking.getInitialURL().then((u) => void handle(u));
+    const sub = Linking.addEventListener("url", ({ url }) => void handle(url));
+    return () => sub.remove();
+  }, [router]);
+
   const signIn = useCallback(async (email: string, password: string) => {
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     return { error };
   }, []);
 
-  /**
-   * サインアップ
-   * - 確認メールONだと「その場でログイン状態にならない」ことがある
-   * - だから user_metadata に display_name/department を入れておき、
-   *   初回ログイン時に createProfileIfMissing が拾ってプロフィールを作れるようにする
-   */
   const signUp = useCallback(
     async (
       email: string,
       password: string,
       displayName: string,
-      department: string
+      departmentId: string
     ) => {
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
         options: {
+          emailRedirectTo: getSignUpEmailRedirectTo(),
           data: {
             display_name: displayName,
-            department,
+            department_id: departmentId,
           },
         },
       });
@@ -356,12 +269,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     []
   );
 
-  /** ログアウト */
   const signOut = useCallback(async () => {
     await supabase.auth.signOut();
   }, []);
 
-  /** プロフィールを再取得（プロフィール更新後に呼び出す） */
   const refreshUser = useCallback(async () => {
     const { data } = await supabase.auth.getSession();
     if (data.session?.user) {
@@ -369,7 +280,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, [fetchUserProfile]);
 
-  /** Contextに流す値（参照が安定するようuseMemo） */
   const value = useMemo(
     () => ({ user, loading, signIn, signUp, signOut, refreshUser }),
     [user, loading, signIn, signUp, signOut, refreshUser]
