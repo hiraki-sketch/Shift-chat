@@ -1,14 +1,23 @@
-import { Bell, Clock, Pin, Send, User as UserIcon } from 'lucide-react-native';
-import { ActivityIndicator, Alert, Pressable, ScrollView, Text, View } from 'react-native';
+import { Bell, Clock, Pin, Send, Trash2, User as UserIcon } from 'lucide-react-native';
+import {
+  ActivityIndicator,
+  Alert,
+  KeyboardAvoidingView,
+  Platform,
+  Pressable,
+  ScrollView,
+  Text,
+  View,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useDepartmentChatManagement } from "../src/hooks/useDepartmentChatManagement";
 import { useShiftStore } from "../src/stores/useShiftStore";
 import { User } from '../types';
 import { ResponsiveGrid } from "./layout/ResponsiveGrid";
+import { AppHeader } from './ui/app-header';
 import { Badge } from './ui/badge';
 import { Button } from './ui/button';
 import { Card } from './ui/card';
-import { AppHeader } from './ui/app-header';
 import { Input } from './ui/input';
 interface DepartmentChatProps {
   user: User;
@@ -17,16 +26,18 @@ interface DepartmentChatProps {
 
 export function DepartmentChat({ user, onNavigate }: DepartmentChatProps) {
   const currentShift = useShiftStore((state) => state.selectedShift);
-  const { state, data, derived, actions, query } = useDepartmentChatManagement(user);
+  const { state, data, derived, utils, actions, query } = useDepartmentChatManagement(user);
   const { isPending, isError, error, refetch } = query;
-  const { newAnnouncement, isComposing, isSending } = state;
+  const { newAnnouncement, isComposing, isSending, isDeleting } = state;
   const { announcements } = data;
   const { canSend } = derived;
+  const { canDeleteAnnouncement } = utils;
   const {
     setNewAnnouncement,
     handleToggleCompose,
     handleCancelCompose,
     handleSendAnnouncement,
+    handleDeleteAnnouncement,
   } = actions;
 
   return (
@@ -106,6 +117,33 @@ export function DepartmentChat({ user, onNavigate }: DepartmentChatProps) {
                     </Text>
                   </View>
                 </View>
+                {canDeleteAnnouncement(announcement) && (
+                  <View className="mt-3">
+                    <Button
+                      variant="outline"
+                      disabled={isDeleting}
+                      onPress={() => {
+                        Alert.alert("部署連絡の削除", "この連絡を削除します。よろしいですか？", [
+                          { text: "キャンセル", style: "cancel" },
+                          {
+                            text: "削除",
+                            style: "destructive",
+                            onPress: async () => {
+                              const res = await handleDeleteAnnouncement(announcement.id);
+                              if (!res.ok) {
+                                Alert.alert("削除エラー", res.message);
+                              }
+                            },
+                          },
+                        ]);
+                      }}
+                      className="border-destructive self-start"
+                    >
+                      <Trash2 size={16} color="#dc2626" />
+                      <Text className="ml-2 text-destructive">削除</Text>
+                    </Button>
+                  </View>
+                )}
               </View>
             </Card>
           ))}
@@ -115,37 +153,42 @@ export function DepartmentChat({ user, onNavigate }: DepartmentChatProps) {
 
       {/* 新規投稿フォーム */}
       {isComposing && (
-        <View className="bg-card border-t border-border p-4">
-          <View className="gap-3">
-            <Input
-              value={newAnnouncement}
-              onChangeText={setNewAnnouncement}
-              placeholder="部署連絡を入力してください..."
-              multiline
-              className="bg-muted rounded-xl p-3 min-h-[80px]"
-            />
-            <View className="flex-row gap-3">
-              <Button 
-                variant="outline" 
-                onPress={handleCancelCompose}
-                className="flex-1"
-              >
-                <Text>キャンセル</Text>
-              </Button>
-              <Button
-                onPress={async () => {
-                  const r = await handleSendAnnouncement();
-                  if (!r.ok) Alert.alert("投稿エラー", r.message);
-                }}
-                disabled={!canSend || isSending}
-                className="flex-1"
-              >
-                <Send size={16} color="white" />
-                <Text className="text-black ml-2">{isSending ? "送信中…" : "送信"}</Text>
-              </Button>
+        <KeyboardAvoidingView
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+          keyboardVerticalOffset={80}
+        >
+          <View className="bg-card border-t border-border p-4">
+            <View className="gap-3">
+              <Input
+                value={newAnnouncement}
+                onChangeText={setNewAnnouncement}
+                placeholder="部署連絡を入力してください..."
+                multiline
+                className="bg-muted rounded-xl p-3 min-h-[80px]"
+              />
+              <View className="flex-row gap-3">
+                <Button
+                  variant="outline"
+                  onPress={handleCancelCompose}
+                  className="flex-1"
+                >
+                  <Text>キャンセル</Text>
+                </Button>
+                <Button
+                  onPress={async () => {
+                    const r = await handleSendAnnouncement();
+                    if (!r.ok) Alert.alert("投稿エラー", r.message);
+                  }}
+                  disabled={!canSend || isSending}
+                  className="flex-1"
+                >
+                  <Send size={16} color="white" />
+                  <Text className="text-black ml-2">{isSending ? "送信中…" : "送信"}</Text>
+                </Button>
+              </View>
             </View>
           </View>
-        </View>
+        </KeyboardAvoidingView>
       )}
     </View>
     </SafeAreaView>

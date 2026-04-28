@@ -17,6 +17,11 @@ export type InsertDepartmentAnnouncementInput = {
   body: string;
 };
 
+type DeleteDepartmentAnnouncementInput = {
+  announcementId: string;
+  userId: string;
+  role?: "admin" | "manager" | "member";
+};
 type AnnouncementRow = {
   id: string;
   title: string;
@@ -24,26 +29,23 @@ type AnnouncementRow = {
   created_by: string | null;
   created_at: string;
   is_pinned: boolean;
-  profiles:
-    | {
-        display_name: string | null;
-      }[]
-    | null;
 };
 
-function mapRow(row: AnnouncementRow): DepartmentAnnouncement {
-  const profile = row.profiles?.[0] ?? null;
-
+function mapRow(
+  row: AnnouncementRow,
+  authorNameById: Record<string, string | null>
+): DepartmentAnnouncement {
   return {
     id: row.id,
     title: row.title,
     body: row.body,
     authorId: row.created_by,
-    authorName: profile?.display_name ?? null,
+    authorName: row.created_by ? (authorNameById[row.created_by] ?? "不明") : "不明",
     createdAt: new Date(row.created_at).toLocaleString("ja-JP"),
     pinned: row.is_pinned,
   };
 }
+
 
 export async function fetchDepartmentAnnouncements(
   departmentId: string | null
@@ -60,20 +62,39 @@ export async function fetchDepartmentAnnouncements(
       body,
       created_by,
       created_at,
-      is_pinned,
-      profiles:created_by (
-        display_name
-      )
+      is_pinned
     `)
+    .is("deleted_at", null)
     .eq("department_id", departmentId)
     .order("is_pinned", { ascending: false })
     .order("created_at", { ascending: false })
-    .range(0, maxRows - 1);
-
+    .limit(maxRows);
   if (error) throw new Error(error.message);
 
   const rows = (data as AnnouncementRow[] | null) ?? [];
-  return rows.map(mapRow);
+  const authorIds = Array.from(
+    new Set(
+      rows
+        .map((row) => row.created_by)
+        .filter((id): id is string => Boolean(id))
+    )
+  );
+
+  const authorNameById: Record<string, string | null> = {};
+  if (authorIds.length > 0) {
+    const { data: profilesData, error: profilesError } = await supabase
+      .from("profiles")
+      .select("id, display_name")
+      .in("id", authorIds);
+
+    if (profilesError) throw new Error(profilesError.message);
+
+    for (const profile of profilesData ?? []) {
+      authorNameById[profile.id] = profile.display_name ?? null;
+    }
+  }
+
+  return rows.map((row) => mapRow(row, authorNameById));
 }
 
 export async function insertDepartmentAnnouncement(
@@ -92,4 +113,35 @@ export async function insertDepartmentAnnouncement(
   });
 
   if (error) throw new Error(error.message);
+}
+
+export async function deleteDepartmentAnnouncement(
+  input: DeleteDepartmentAnnouncementInput
+): Promise<void> {
+  const { data: target, error: fetchError } = await supabase
+    .from("department_announcements")
+    .select("id, created_by")
+    .eq("id", input.announcementId)
+    .is("deleted_at", null)
+    .single();
+
+  if (fetchError) {
+    throw new Error(fetchError.message);
+  }
+
+  const canDelete = target.created_by === input.userId || input.role === "admin";
+  if (!canDelete) {
+    throw new Error("削除権限がありません");
+  }
+
+  const { error: deleteError } = await supabase
+    .from("department_announcements")
+    .update({
+      deleted_at: new Date().toISOString(),
+    })
+    .eq("id", input.announcementId);
+
+  if (deleteError) {
+    throw new Error(deleteError.message);
+  }
 }
