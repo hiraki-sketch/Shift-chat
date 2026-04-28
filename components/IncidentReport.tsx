@@ -23,7 +23,7 @@ export function IncidentReport({ user, selectedShift, onNavigate }: IncidentRepo
     selectedShift
   );
 
-  const { isPending, isError, error, refetch } = query;
+  const { isPending, isDeleting, isError, error, refetch } = query;
   const { title, body, severity, shift, isSubmitting, showExistingReports, photoUris } = state;
   const { existingReports } = data;
   const { canSubmit } = derived;
@@ -144,6 +144,7 @@ export function IncidentReport({ user, selectedShift, onNavigate }: IncidentRepo
                           <View className="mt-3">
                             <Button
                               variant="outline"
+                              disabled={isDeleting}
                               onPress={() => {
                                 Alert.alert("異常報告の削除", "この報告を削除します。よろしいですか？", [
                                   { text: "キャンセル", style: "cancel" },

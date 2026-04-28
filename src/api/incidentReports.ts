@@ -117,6 +117,7 @@ export async function fetchIncidentReports(departmentId: string | null): Promise
       )
     `)
     .eq("department_id", departmentId)
+    .is("deleted_at", null)
     .order("created_at", { ascending: false })
     .range(0, maxRows - 1);
 
@@ -156,8 +157,11 @@ export async function deleteIncidentReport(params: {
   const { reportId, userId, role } = params;
   const isAdmin = role === "admin";
 
-  let query = supabase.from("incident_reports").delete().eq("id", reportId);
-
+  let query = supabase.from("incident_reports").update({
+    deleted_at: new Date().toISOString(),
+    deleted_by: userId,
+  })
+  .eq("id", reportId);
   if (!isAdmin) {
     query = query.eq("reported_by", userId);
   }

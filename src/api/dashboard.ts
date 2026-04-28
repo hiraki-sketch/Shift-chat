@@ -60,6 +60,7 @@ export async function fetchDashboardSummary(params: {
       .from("incident_reports")
       .select("id, title, severity, shift, created_at")
       .eq("department_id", deptId)
+      .is("deleted_at", null)
       .order("created_at", { ascending: false })
       .limit(INCIDENT_LIMIT),
     supabase

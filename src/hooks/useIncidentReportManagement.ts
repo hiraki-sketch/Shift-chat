@@ -293,6 +293,7 @@ export function useIncidentReportManagement(user: User, selectedShift: Shift) {
     },
     query: {
       isPending: reportsQuery.isPending,
+      isDeleting: deleteMutation.isPending,
       isError: reportsQuery.isError,
       error: reportsQuery.error,
       refetch: reportsQuery.refetch,
