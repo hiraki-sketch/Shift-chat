@@ -8,7 +8,7 @@ type ActionResult = { ok: boolean; title: string; message: string };
 type UseProfileSettingsManagementParams = {
   user: User;
   onNavigate: (page: string) => void;
-  onLogout: () => void;
+  onLogout: () => Promise<boolean>;
 };
 
 export function useProfileSettingsManagement({
@@ -23,8 +23,6 @@ export function useProfileSettingsManagement({
   const [displayName, setDisplayName] = useState(user.displayName || "");
   const [email, setEmail] = useState(user.email || "");
   const [department, setDepartment] = useState(user.department || "");
-  const [notificationsEnabled, setNotificationsEnabled] = useState(true);
-  const [emailNotifications, setEmailNotifications] = useState(true);
 
   const getRoleText = useCallback((role: string) => {
     switch (role) {
@@ -116,19 +114,18 @@ export function useProfileSettingsManagement({
     }
   }, [department, displayName, refreshUser, user.id]);
 
-  const handleExportData = useCallback((): ActionResult => {
-    console.log("データエクスポート");
-    return {
-      ok: true,
-      title: "エクスポート開始",
-      message: "データエクスポートを開始しました。完了後にダウンロードリンクが送信されます。",
-    };
-  }, []);
-
   const handleLogoutInternal = useCallback(async (): Promise<ActionResult> => {
     if (onLogout) {
-      await Promise.resolve(onLogout());
-      return { ok: true, title: "ログアウト", message: "ログアウトしました。" };
+      setLoadingLogout(true);
+      try {
+        const loggedOut = await onLogout();
+        if (loggedOut) {
+          return { ok: true, title: "ログアウト", message: "ログアウトしました。" };
+        }
+        return { ok: false, title: "キャンセル", message: "ログアウトをキャンセルしました。" };
+      } finally {
+        setLoadingLogout(false);
+      }
     }
 
     try {
@@ -154,8 +151,6 @@ export function useProfileSettingsManagement({
       displayName,
       email,
       department,
-      notificationsEnabled,
-      emailNotifications,
     },
     utils: {
       getRoleText,
@@ -165,10 +160,7 @@ export function useProfileSettingsManagement({
       setDisplayName,
       setEmail,
       setDepartment,
-      setNotificationsEnabled,
-      setEmailNotifications,
       handleSaveProfile,
-      handleExportData,
       handleLogoutInternal,
     },
   };

@@ -1,5 +1,5 @@
 //profile-settings.tsx
-import { ActivityIndicator, Alert, ScrollView, Switch, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useProfileSettingsManagement } from "../src/hooks/useProfileSettingsManagement";
 import { User } from '../types';
@@ -14,7 +14,7 @@ import { Label } from './ui/label';
 interface ProfileSettingsProps {
   user: User;
   onNavigate: (page: string) => void;
-  onLogout: () => void;
+  onLogout: () => Promise<boolean>;
 }
 
 export function ProfileSettings({ user, onNavigate, onLogout }: ProfileSettingsProps) {
@@ -29,18 +29,13 @@ export function ProfileSettings({ user, onNavigate, onLogout }: ProfileSettingsP
     displayName,
     email,
     department,
-    notificationsEnabled,
-    emailNotifications,
   } = state;
   const { getRoleText, getRoleColor } = utils;
   const {
     setDisplayName,
     setEmail,
     setDepartment,
-    setNotificationsEnabled,
-    setEmailNotifications,
     handleSaveProfile,
-    handleExportData,
     handleLogoutInternal,
   } = actions;
 
@@ -122,97 +117,6 @@ export function ProfileSettings({ user, onNavigate, onLogout }: ProfileSettingsP
                 ) : (
                   'プロフィールを更新'
                 )}
-              </Button>
-            </View>
-          </View>
-        </Card>
-
-        {/* 通知設定 */}
-        <Card className="rounded-2xl p-4">
-          <View className="mb-4">
-            <Text className="text-lg font-semibold flex-row items-center">
-              <Text className="mr-2">🔔</Text>
-              <Text>通知設定</Text>
-            </Text>
-          </View>
-          <View className="space-y-4">
-            <View className="flex-row items-center justify-between">
-              <View className="flex-1">
-                <Text className="font-medium">通知を有効にする</Text>
-                <Text className="text-sm text-muted-foreground">
-                  異常報告やメッセージの通知を受け取ります
-                </Text>
-              </View>
-              <Switch
-                value={notificationsEnabled}
-                onValueChange={setNotificationsEnabled}
-              />
-            </View>
-
-            {notificationsEnabled && (
-              <View className="flex-row items-center justify-between pl-4">
-                <View className="flex-1">
-                  <Text className="font-medium">メール通知</Text>
-                  <Text className="text-sm text-muted-foreground">
-                    重要な通知をメールで受け取ります
-                  </Text>
-                </View>
-                <Switch
-                  value={emailNotifications}
-                  onValueChange={setEmailNotifications}
-                />
-              </View>
-            )}
-          </View>
-        </Card>
-
-        {/* セキュリティ */}
-        <Card className="rounded-2xl p-4">
-          <View className="mb-4">
-            <Text className="text-lg font-semibold flex-row items-center">
-              <Text className="mr-2">🛡️</Text>
-              <Text>セキュリティ</Text>
-            </Text>
-          </View>
-          <View className="space-y-4">
-            <View className="flex-row items-center justify-between">
-              <View className="flex-1">
-                <Text className="font-medium">パスワード変更</Text>
-                <Text className="text-sm text-muted-foreground">
-                  定期的なパスワード変更を推奨します
-                </Text>
-              </View>
-              <Button variant="outline">
-                変更
-              </Button>
-            </View>
-          </View>
-        </Card>
-
-        {/* データエクスポート */}
-        <Card className="rounded-2xl p-4">
-          <View className="mb-4">
-            <Text className="text-lg font-semibold flex-row items-center">
-              <Text className="mr-2">📥</Text>
-              <Text>データエクスポート</Text>
-            </Text>
-          </View>
-          <View className="space-y-4">
-            <View className="flex-row items-center justify-between">
-              <View className="flex-1">
-                <Text className="font-medium">自分のデータをエクスポート</Text>
-                <Text className="text-sm text-muted-foreground">
-                  投稿した異常報告やメッセージのデータをダウンロードできます
-                </Text>
-              </View>
-              <Button
-                variant="outline"
-                onPress={() => {
-                  const res = handleExportData();
-                  Alert.alert(res.title, res.message);
-                }}
-              >
-                エクスポート
               </Button>
             </View>
           </View>
