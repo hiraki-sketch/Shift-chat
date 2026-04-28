@@ -1,9 +1,10 @@
 //search-page.tsx
+import { Clock3, Megaphone, Search, Siren, User as UserIcon, Wrench } from "lucide-react-native";
 import { ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from "react-native-safe-area-context";
+import { useSearchPageManagement } from "../src/hooks/useSearchPageManagement";
 import { useShiftStore } from "../src/stores/useShiftStore";
 import { Shift, User } from '../types';
-import { useSearchPageManagement } from "../src/hooks/useSearchPageManagement";
 import { ResponsiveGrid } from "./layout/ResponsiveGrid";
 import { AppHeader } from "./ui/app-header";
 import { Badge } from "./ui/badge";
@@ -30,7 +31,7 @@ export function SearchPage({
   );
   const { searchTerm, searchType, selectedShift, selectedSeverity, showFilters } = state;
   const { filteredResults } = data;
-  const { getTypeIcon, getTypeText } = utils;
+  const { getTypeText } = utils;
   const {
     setSearchTerm,
     setSearchType,
@@ -38,6 +39,9 @@ export function SearchPage({
     setSelectedSeverity,
     toggleFilters,
   } = actions;
+
+  const renderTypeIcon = (type: "incident" | "announcement") =>
+    type === "incident" ? <Siren size={18} color="#6b7280" /> : <Megaphone size={18} color="#6b7280" />;
 
 
   return (
@@ -49,7 +53,7 @@ export function SearchPage({
         onBack={() => onNavigate('index')}
         rightSlot={
           <Button variant="outline" size="sm" onPress={toggleFilters}>
-            <Text className="mr-2">🔧</Text>
+            <Wrench size={14} color="#334155" />
             <Text>フィルター</Text>
           </Button>
         }
@@ -61,7 +65,7 @@ export function SearchPage({
           <View className="space-y-4">
             <View className="relative">
               <View className="absolute left-3 top-1/2 transform -translate-y-1/2">
-                <Text className="text-gray-400 text-lg">🔍</Text>
+                <Search size={18} color="#9ca3af" />
               </View>
               <Input
                 placeholder="キーワードを入力して検索..."
@@ -157,15 +161,15 @@ export function SearchPage({
 
           {filteredResults.map((item) => (
             <Card key={item.id}>
-              <View className="flex-row items-start space-x-3">
-                <View className="flex-shrink-0">
-                  <Text className="text-gray-500 text-lg">{getTypeIcon(item.type)}</Text>
+              <View className="flex-row items-start gap-3">
+                <View className="shrink-0">
+                  {renderTypeIcon(item.type)}
                 </View>
-                <View className="flex-1">
+                <View className="flex-1 min-w-0">
                   <View className="flex-row items-start justify-between">
-                    <View className="flex-1">
-                      <View className="flex-row items-center space-x-2 mb-1">
-                        <Text className="font-medium text-gray-900">{item.title}</Text>
+                    <View className="flex-1 min-w-0">
+                      <View className="flex-row items-center gap-2 mb-1 flex-wrap">
+                        <Text className="font-medium text-gray-900 flex-1 min-w-0">{item.title}</Text>
                         <Badge variant="outline">
                           {getTypeText(item.type)}
                         </Badge>
@@ -173,13 +177,13 @@ export function SearchPage({
                       
                       <Text className="text-sm text-gray-700 mb-2">{item.content}</Text>
                       
-                      <View className="flex-row items-center space-x-4">
-                        <View className="flex-row items-center space-x-1">
-                          <Text className="text-gray-500 text-lg">👤</Text>
+                      <View className="flex-row items-center flex-wrap gap-4">
+                        <View className="flex-row items-center gap-1">
+                          <UserIcon size={14} color="#6b7280" />
                           <Text className="text-xs text-gray-500">{item.author}</Text>
                         </View>
-                        <View className="flex-row items-center space-x-1">
-                          <Text className="text-gray-500 text-lg">⏰</Text>
+                        <View className="flex-row items-center gap-1">
+                          <Clock3 size={14} color="#6b7280" />
                           <Text className="text-xs text-gray-500">{item.createdAt}</Text>
                         </View>
                         {'shift' in item && item.shift && (
@@ -197,8 +201,8 @@ export function SearchPage({
 
           {filteredResults.length === 0 && (
             <Card>
-              <View className="text-center py-8">
-                <Text className="text-gray-400 text-6xl mb-4">🔍</Text>
+              <View className="items-center py-8">
+                <Search size={36} color="#9ca3af" />
                 <Text className="text-gray-500">
                   {searchTerm ? '検索条件に一致する結果が見つかりません。' : 'キーワードを入力して検索してください。'}
                 </Text>

@@ -1,5 +1,7 @@
 import {
+  KeyboardAvoidingView,
   Modal,
+  Platform,
   Pressable,
   StyleSheet,
   Text,
@@ -35,53 +37,58 @@ export function ScheduleModal({
   return (
     <Modal animationType="slide" transparent visible={visible} onRequestClose={onClose}>
       <View style={styles.overlay}>
-        <View style={styles.card}>
-          <Text style={styles.title}>{employeeName} さんの勤務入力</Text>
-          <Text style={styles.subTitle}>{day ? `${day}日` : '-'} の勤務情報</Text>
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          keyboardVerticalOffset={80}
+        >
+          <View style={styles.card}>
+            <Text style={styles.title}>{employeeName} さんの勤務入力</Text>
+            <Text style={styles.subTitle}>{day ? `${day}日` : '-'} の勤務情報</Text>
 
-          <Text style={styles.label}>勤務帯</Text>
-          <View style={styles.options}>
-            {data.shiftOptions.map((shift) => (
-              <Pressable
-                key={shift || 'empty'}
-                onPress={() => actions.setSelectedShift(shift)}
-                style={[
-                  styles.optionButton,
-                  state.selectedShift === shift && styles.optionButtonSelected,
-                ]}
-              >
-                <Text
+            <Text style={styles.label}>勤務帯</Text>
+            <View style={styles.options}>
+              {data.shiftOptions.map((shift) => (
+                <Pressable
+                  key={shift || 'empty'}
+                  onPress={() => actions.setSelectedShift(shift)}
                   style={[
-                    styles.optionText,
-                    state.selectedShift === shift && styles.optionTextSelected,
+                    styles.optionButton,
+                    state.selectedShift === shift && styles.optionButtonSelected,
                   ]}
                 >
-                  {shift || '未入力'}
-                </Text>
+                  <Text
+                    style={[
+                      styles.optionText,
+                      state.selectedShift === shift && styles.optionTextSelected,
+                    ]}
+                  >
+                    {shift || '未入力'}
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
+
+            <Text style={styles.label}>勤務場所</Text>
+            <TextInput
+              value={state.workplace}
+              onChangeText={actions.setWorkplace}
+              placeholder="例: 第2工場 Aライン"
+              style={styles.input}
+            />
+
+            <View style={styles.actions}>
+              <Pressable onPress={onClose} style={[styles.actionButton, styles.cancelButton]}>
+                <Text style={styles.cancelText}>キャンセル</Text>
               </Pressable>
-            ))}
+              <Pressable
+                onPress={actions.handleSave}
+                style={[styles.actionButton, styles.saveButton]}
+              >
+                <Text style={styles.saveText}>保存</Text>
+              </Pressable>
+            </View>
           </View>
-
-          <Text style={styles.label}>勤務場所</Text>
-          <TextInput
-            value={state.workplace}
-            onChangeText={actions.setWorkplace}
-            placeholder="例: 第2工場 Aライン"
-            style={styles.input}
-          />
-
-          <View style={styles.actions}>
-            <Pressable onPress={onClose} style={[styles.actionButton, styles.cancelButton]}>
-              <Text style={styles.cancelText}>キャンセル</Text>
-            </Pressable>
-            <Pressable
-              onPress={actions.handleSave}
-              style={[styles.actionButton, styles.saveButton]}
-            >
-              <Text style={styles.saveText}>保存</Text>
-            </Pressable>
-          </View>
-        </View>
+        </KeyboardAvoidingView>
       </View>
     </Modal>
   );
