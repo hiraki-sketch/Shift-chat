@@ -8,6 +8,6 @@ type ShiftStoreState = {
 };
 
 export const useShiftStore = create<ShiftStoreState>((set) => ({
-  selectedShift: "1勤",
+  selectedShift: "1",
   setSelectedShift: (shift) => set({ selectedShift: shift }),
 }));

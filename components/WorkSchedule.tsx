@@ -2,11 +2,11 @@ import { useMemo, useState } from 'react';
 import { ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import type { ScheduleData, ShiftData, ShiftType } from '../src/hooks/useScheduleTypes';
+import { useWorkScheduleManagement } from '../src/hooks/useWorkScheduleManagement';
 import type { Shift, User } from '../types';
 import { ScheduleCalendar } from './ScheduleCalendar';
 import { ShiftSelector } from './ShiftSelector';
 import { AppHeader } from './ui/app-header';
-import { useWorkScheduleManagement } from '../src/hooks/useWorkScheduleManagement';
 
 interface WorkScheduleProps {
   user: User;
@@ -14,8 +14,21 @@ interface WorkScheduleProps {
   onNavigate: (page: string) => void;
 }
 
+function toShiftType(shift: Shift): ShiftType {
+  if (shift === "1") return "1勤";
+  if (shift === "2") return "2勤";
+  return "3勤";
+}
+
+function toShift(shiftType: ShiftType, fallback: Shift): Shift {
+  if (shiftType === "1勤") return "1";
+  if (shiftType === "2勤") return "2";
+  if (shiftType === "3勤") return "3";
+  return fallback;
+}
+
 export function WorkSchedule({ user, selectedShift, onNavigate }: WorkScheduleProps) {
-  const defaultShift: ShiftType = selectedShift;
+  const defaultShift: ShiftType = toShiftType(selectedShift);
   const [preferredShift, setPreferredShift] = useState<ShiftType>(defaultShift);
   const { state, data, actions } = useWorkScheduleManagement(user, selectedShift);
   const currentUserId = user.id;
@@ -31,7 +44,7 @@ export function WorkSchedule({ user, selectedShift, onNavigate }: WorkSchedulePr
       const [y, m, d] = parts;
       if (y !== year || m !== month) continue;
       schedule[d] = {
-        shift: entry.shift as ShiftType,
+        shift: toShiftType(entry.shift),
         workplace: entry.memo?.trim() ? entry.memo.trim() : "",
       };
     }
@@ -51,7 +64,7 @@ export function WorkSchedule({ user, selectedShift, onNavigate }: WorkSchedulePr
 
   const handleUpdateShift = async (employeeId: string, day: number, shiftData: ShiftData) => {
     const workDate = `${scheduleData.year}-${String(scheduleData.month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
-    const shiftToSave = shiftData.shift || preferredShift;
+    const shiftToSave = toShift(shiftData.shift || preferredShift, selectedShift);
     const memo = shiftData.workplace.trim().length > 0 ? shiftData.workplace.trim() : null;
     await actions.handleSelectDate(new Date(`${workDate}T12:00:00`), shiftToSave, memo);
   };

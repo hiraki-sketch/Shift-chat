@@ -19,4 +19,10 @@ export const queryKeys = {
     search: (departmentId: string, keyword: string) =>
       [...queryKeys.departmentAnnouncements.all, "search", departmentId, keyword] as const,
   },
+  chatThreads: {
+    all: ["chatThreads"] as const,
+    list: () => [...queryKeys.chatThreads.all, "list"] as const,
+    messages: (threadId: string) =>
+      [...queryKeys.chatThreads.all, "messages", threadId] as const,
+  },
 } as const;

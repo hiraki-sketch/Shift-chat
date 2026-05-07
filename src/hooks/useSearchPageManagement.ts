@@ -1,10 +1,11 @@
+import { useQuery } from "@tanstack/react-query";
 import { useCallback, useMemo, useState } from "react";
 import type { Shift, User } from "../../types";
-import { useQuery } from "@tanstack/react-query";
 import {
   searchDepartmentAnnouncements,
   type DepartmentAnnouncement,
 } from "../api/departmentAnnouncements";
+import { toJapaneseErrorMessage } from "../lib/errorMessages";
 import { searchIncidentReports } from "../api/incidentReports";
 import { queryKeys } from "../lib/queryKeys";
 
@@ -118,17 +119,6 @@ export function useSearchPageManagement(user: User, initialShift?: Shift) {
     user.department,
   ]);
 
-  const getTypeIcon = useCallback((type: string) => {
-    switch (type) {
-      case "incident":
-        return "🚨";
-      case "announcement":
-        return "📢";
-      default:
-        return "🔍";
-    }
-  }, []);
-
   const getTypeText = useCallback((type: string) => {
     switch (type) {
       case "incident":
@@ -156,7 +146,6 @@ export function useSearchPageManagement(user: User, initialShift?: Shift) {
       filteredResults,
     },
     utils: {
-      getTypeIcon,
       getTypeText,
     },
     actions: {
@@ -171,14 +160,19 @@ export function useSearchPageManagement(user: User, initialShift?: Shift) {
       incidentsFetching: incidentsQuery.isFetching,
       incidentsError: incidentsQuery.isError,
       incidentsErrorMessage:
-        incidentsQuery.error instanceof Error ? incidentsQuery.error.message : null,
+        incidentsQuery.error
+          ? toJapaneseErrorMessage(incidentsQuery.error, "異常報告の検索に失敗しました。")
+          : null,
       refetchIncidents: incidentsQuery.refetch,
       announcementsPending: announcementsQuery.isPending,
       announcementsFetching: announcementsQuery.isFetching,
       announcementsError: announcementsQuery.isError,
       announcementsErrorMessage:
-        announcementsQuery.error instanceof Error
-          ? announcementsQuery.error.message
+        announcementsQuery.error
+          ? toJapaneseErrorMessage(
+              announcementsQuery.error,
+              "部署連絡の検索に失敗しました。"
+            )
           : null,
       refetchAnnouncements: announcementsQuery.refetch,
     },

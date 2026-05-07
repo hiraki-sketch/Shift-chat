@@ -3,6 +3,7 @@ import { ImagePlus, Trash2, X } from "lucide-react-native";
 import { ActivityIndicator, Alert, Pressable, ScrollView, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useIncidentReportManagement } from "../src/hooks/useIncidentReportManagement";
+import { toJapaneseErrorMessage } from "../src/lib/errorMessages";
 import { Shift, User } from "../types";
 import { AppHeader } from "./ui/app-header";
 import { Badge } from "./ui/badge";
@@ -44,7 +45,7 @@ export function IncidentReport({ user, selectedShift, onNavigate }: IncidentRepo
     <SafeAreaView className="flex-1 bg-background">
       <AppHeader
         title="異常報告"
-        subtitle={`${user?.department ?? "—"} ・ ${selectedShift}`}
+        subtitle={`${user?.department ?? "—"} ・ ${selectedShift}勤`}
         onBack={() => onNavigate("index")}
         variant="emerald"
         rightSlot={
@@ -85,7 +86,7 @@ export function IncidentReport({ user, selectedShift, onNavigate }: IncidentRepo
               {user.departmentId && isError && (
                 <View className="py-4">
                   <Text className="text-destructive">
-                    {error instanceof Error ? error.message : "読み込みに失敗しました"}
+                    {toJapaneseErrorMessage(error, "読み込みに失敗しました。")}
                   </Text>
                   <Pressable onPress={() => refetch()} className="mt-2 self-start">
                     <Text className="text-primary font-medium">再試行</Text>
@@ -275,20 +276,26 @@ export function IncidentReport({ user, selectedShift, onNavigate }: IncidentRepo
                   <View className="min-w-0">
                     <Label>勤務帯 *</Label>
                     <View className="flex-row gap-3 mt-2 min-w-0">
-                      {(["1勤", "2勤", "3勤"] as const).map((s) => (
+                      {(
+                        [
+                          { value: "1" as const, label: "1勤" },
+                          { value: "2" as const, label: "2勤" },
+                          { value: "3" as const, label: "3勤" },
+                        ] as const
+                      ).map((s) => (
                         <Button
-                          key={s}
-                          variant={shift === s ? "default" : "outline"}
-                          onPress={() => setShift(s)}
+                          key={s.value}
+                          variant={shift === s.value ? "default" : "outline"}
+                          onPress={() => setShift(s.value)}
                           className="flex-1 min-h-12 min-w-0 items-center justify-center px-1"
                         >
                           <Text
                             numberOfLines={1}
                             className={`text-sm font-medium ${
-                              shift === s ? "text-gray-50" : "text-foreground"
+                              shift === s.value ? "text-gray-50" : "text-foreground"
                             }`}
                           >
-                            {s}
+                            {s.label}
                           </Text>
                         </Button>
                       ))}

@@ -1,12 +1,13 @@
-import { ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import { KeyboardAvoidingView, Platform, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Shift, User } from '../types';
+
 import { useChatThreadsManagement } from "../src/hooks/useChatThreadsManagement";
 import { ResponsiveGrid } from "./layout/ResponsiveGrid";
-import { Clock, MessageCircle } from './ui/icons';
 import { AppHeader } from './ui/app-header';
 import { Badge } from './ui/badge';
 import { Button } from './ui/button';
+import { Clock, MessageCircle } from './ui/icons';
 import { Input } from './ui/input';
 interface ChatThreadsProps {
   user: User;
@@ -19,7 +20,7 @@ export function ChatThreads({ user, selectedShift, onNavigate }: ChatThreadsProp
     user,
     selectedShift,
   });
-  const { selectedThread, newMessage } = state;
+  const { selectedThread, newMessage, isSendingMessage, errorMessage } = state;
   const { threads, threadMessages } = data;
   const { canSend } = derived;
   const { setSelectedThread, setNewMessage, handleSendMessage } = actions;
@@ -27,60 +28,69 @@ export function ChatThreads({ user, selectedShift, onNavigate }: ChatThreadsProp
   if (selectedThread) {
     return (
       <SafeAreaView className="flex-1">
-      <View className="flex-1 bg-background">
-        <AppHeader
-          title={selectedThread.title}
-          subtitle={`${selectedThread.department} - ${selectedShift}`}
-          onBack={() => setSelectedThread(null)}
-        />
+        <KeyboardAvoidingView
+          className="flex-1 bg-background"
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+          keyboardVerticalOffset={80}
+        >
+          <AppHeader
+            title={selectedThread.title}
+            subtitle={`${selectedThread.departmentName ?? user.department} - ${selectedShift}勤`}
+            onBack={() => setSelectedThread(null)}
+          />
 
-        {/* メッセージ一覧 */}
-        <ScrollView className="flex-1 p-4">
-          <View className="space-y-4">
-            {threadMessages.map((message) => (
-              <View key={message.id} className="flex-row space-x-3">
-                <View className="w-8 h-8 bg-blue-500 rounded-full items-center justify-center">
-                  <Text className="text-white text-sm font-medium">
-                    {message.author.charAt(0)}
-                  </Text>
-                </View>
-                <View className="flex-1">
-                  <View className="flex-row items-center space-x-2">
-                    <Text className="text-sm font-medium text-foreground">{message.author}</Text>
-                    <Text className="text-xs text-muted-foreground">
-                      {new Date(message.createdAt).toLocaleTimeString('ja-JP')}
+          {/* メッセージ一覧 */}
+          <ScrollView className="flex-1 p-4" keyboardShouldPersistTaps="handled">
+            <View className="space-y-4">
+              {threadMessages.map((message) => (
+                <View key={message.id} className="flex-row space-x-3">
+                  <View className="w-8 h-8 bg-blue-500 rounded-full items-center justify-center">
+                    <Text className="text-white text-sm font-medium">
+                      {message.author.charAt(0)}
                     </Text>
                   </View>
-                  <View className="mt-1 bg-card rounded-lg p-3 border">
-                    <Text className="text-sm text-foreground">{message.body}</Text>
+                  <View className="flex-1">
+                    <View className="flex-row items-center space-x-2">
+                      <Text className="text-sm font-medium text-foreground">{message.author}</Text>
+                      <Text className="text-xs text-muted-foreground">
+                        {new Date(message.createdAt).toLocaleTimeString('ja-JP')}
+                      </Text>
+                    </View>
+                    <View className="mt-1 bg-card rounded-lg p-3 border">
+                      <Text className="text-sm text-foreground">{message.body}</Text>
+                    </View>
                   </View>
                 </View>
-              </View>
-            ))}
-          </View>
-        </ScrollView>
+              ))}
+            </View>
+          </ScrollView>
 
-        {/* メッセージ入力 */}
-        <View className="bg-card border-t border-border p-4">
-          <View className="flex-row space-x-3">
-            <Input
-              value={newMessage}
-              onChangeText={setNewMessage}
-              placeholder="メッセージを入力..."
-              className="flex-1 rounded-xl px-4 py-3"
-              multiline
-            />
-            <Button
-              onPress={handleSendMessage}
-              disabled={!canSend}
-              className={`px-4 py-3 rounded-xl ${canSend ? 'bg-primary' : 'bg-muted opacity-70'}`}
-            >
-              送信
-            </Button>
+          {/* メッセージ入力 */}
+          <View className="bg-card border-t border-border p-4">
+            {errorMessage && (
+              <Text className="text-sm text-destructive mb-2">{errorMessage}</Text>
+            )}
+            <View className="flex-row items-end gap-3">
+              <Input
+                value={newMessage}
+                onChangeText={setNewMessage}
+                placeholder="メッセージを入力..."
+                className="flex-1 min-h-[44px] max-h-32 rounded-xl px-4 py-3"
+                multiline
+                textAlignVertical="top"
+              />
+              <Button
+                variant={canSend ? "default" : "secondary"}
+                onPress={handleSendMessage}
+                disabled={!canSend}
+                className="shrink-0 self-end rounded-xl px-4"
+              >
+                {isSendingMessage ? "送信中..." : "送信"}
+              </Button>
+            </View>
           </View>
-        </View>
-      </View>
-    </SafeAreaView>
+        </KeyboardAvoidingView>
+      </SafeAreaView>
     );
   }
 
@@ -89,7 +99,7 @@ export function ChatThreads({ user, selectedShift, onNavigate }: ChatThreadsProp
       <ScrollView className="flex-1 bg-background">
       <AppHeader
         title="チャットスレッド"
-        subtitle={`${user.department} - ${selectedShift}`}
+        subtitle={`${user.department} - ${selectedShift}勤`}
         onBack={() => onNavigate('index')}
         rightSlot={
           <Button onPress={() => onNavigate('create-chat')} className="px-4 py-2 rounded-xl">
@@ -115,7 +125,7 @@ export function ChatThreads({ user, selectedShift, onNavigate }: ChatThreadsProp
                   <Text className="font-medium text-foreground text-base">{thread.title}</Text>
                   <View className="flex-row items-center space-x-2 mt-1">
                     {thread.shift && <Badge variant="secondary">{thread.shift}</Badge>}
-                    <Text className="text-sm text-muted-foreground">{thread.department}</Text>
+                    <Text className="text-sm text-muted-foreground">{thread.departmentName ?? user.department}</Text>
                   </View>
                   <View className="flex-row items-center space-x-4 mt-2">
                     <View className="flex-row items-center space-x-1">

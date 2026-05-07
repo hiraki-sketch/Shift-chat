@@ -9,7 +9,8 @@ export interface User {
   role?: 'admin' | 'manager' | 'member';
 }
 
-export type Shift = '1勤' | '2勤' | '3勤';
+export type Shift = "1" | "2" | "3";
+export type ShiftOrAll = Shift | "all";
 
 export interface AttendanceRecord {
   id: string;
@@ -27,8 +28,9 @@ export interface AttendanceRecord {
 export interface Thread {
   id: string;
   title: string;
-  department: string;
-  shift?: Shift;
+  departmentId: string;
+  departmentName?: string | null;
+  shift: ShiftOrAll;
   createdBy: string;
   createdAt: string;
   messageCount: number;
@@ -37,6 +39,7 @@ export interface Thread {
 export interface Message {
   id: string;
   threadId: string;
+  userId: string;
   author: string;
   body: string;
   createdAt: string;

@@ -77,11 +77,11 @@ export function useWorkScheduleManagement(user: User, selectedShift: Shift) {
 
   const getShiftColor = useCallback((shift: Shift) => {
     switch (shift) {
-      case "1勤":
+      case "1":
         return "bg-blue-100";
-      case "2勤":
+      case "2":
         return "bg-green-100";
-      case "3勤":
+      case "3":
         return "bg-purple-100";
       default:
         return "bg-gray-100";
@@ -90,11 +90,11 @@ export function useWorkScheduleManagement(user: User, selectedShift: Shift) {
 
   const getShiftTextColor = useCallback((shift: Shift) => {
     switch (shift) {
-      case "1勤":
+      case "1":
         return "text-blue-800";
-      case "2勤":
+      case "2":
         return "text-green-800";
-      case "3勤":
+      case "3":
         return "text-purple-800";
       default:
         return "text-gray-800";

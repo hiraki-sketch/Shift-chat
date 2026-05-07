@@ -4,7 +4,7 @@ import { Shift, User } from '../types';
 import { Dashboard } from './Dashboard';
 
 export function DashboardExample() {
-  const [selectedShift, setSelectedShift] = useState<Shift>('1勤');
+  const [selectedShift, setSelectedShift] = useState<Shift>('1');
   
   const mockUser: User = {
     id: '1',

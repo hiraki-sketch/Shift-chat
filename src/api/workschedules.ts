@@ -1,5 +1,22 @@
 import { supabase } from "@/lib/supabase";
 
+function normalizeWorkScheduleError(error: unknown, fallback: string): string {
+  if (
+    error &&
+    typeof error === "object" &&
+    "message" in error &&
+    typeof (error as { message?: unknown }).message === "string" &&
+    (error as { message: string }).message.trim().length > 0
+  ) {
+    const raw = (error as { message: string }).message.toLowerCase();
+    if (raw.includes("row-level security")) return "アクセス権限がありません";
+    if (raw.includes("permission denied")) return "アクセス権限がありません";
+    if (raw.includes("network")) return "ネットワークエラーが発生しました";
+    if (raw.includes("timeout")) return "通信がタイムアウトしました";
+  }
+  return fallback;
+}
+
 export type WorkSchedule = {
   id: string;
   userId: string;
@@ -34,7 +51,11 @@ export async function fetchMyWorkSchedules(userId: string): Promise<WorkSchedule
     .is("deleted_at", null)
     .order("work_date", { ascending: true });
 
-  if (error) throw new Error(error.message);
+  if (error) {
+    throw new Error(
+      normalizeWorkScheduleError(error, "勤務表の取得に失敗しました")
+    );
+  }
 
   return ((data as WorkScheduleRow[] | null) ?? []).map(mapRow);
 }
@@ -54,7 +75,14 @@ export async function upsertMyWorkSchedule(input: {
     .eq("work_date", input.workDate)
     .maybeSingle();
 
-  if (existingError) throw new Error(existingError.message);
+  if (existingError) {
+    throw new Error(
+      normalizeWorkScheduleError(
+        existingError,
+        "勤務表の既存データ確認に失敗しました"
+      )
+    );
+  }
 
   if (existing?.id) {
     const { error: updateError } = await supabase
@@ -67,7 +95,11 @@ export async function upsertMyWorkSchedule(input: {
       })
       .eq("id", existing.id);
 
-    if (updateError) throw new Error(updateError.message);
+    if (updateError) {
+      throw new Error(
+        normalizeWorkScheduleError(updateError, "勤務表の更新に失敗しました")
+      );
+    }
     return;
   }
 
@@ -80,7 +112,11 @@ export async function upsertMyWorkSchedule(input: {
     deleted_at: null,
   });
 
-  if (insertError) throw new Error(insertError.message);
+  if (insertError) {
+    throw new Error(
+      normalizeWorkScheduleError(insertError, "勤務表の登録に失敗しました")
+    );
+  }
 }
 
 export async function deleteMyWorkSchedule(id: string): Promise<void> {
@@ -92,5 +128,9 @@ export async function deleteMyWorkSchedule(id: string): Promise<void> {
     })
     .eq("id", id);
 
-  if (error) throw new Error(error.message);
+  if (error) {
+    throw new Error(
+      normalizeWorkScheduleError(error, "勤務表の削除に失敗しました")
+    );
+  }
 }

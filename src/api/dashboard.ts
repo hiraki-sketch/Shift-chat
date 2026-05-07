@@ -1,6 +1,23 @@
 import { supabase } from "@/lib/supabase";
 import type { Shift } from "../../types";
 
+function normalizeDashboardError(error: unknown, fallback: string): string {
+  if (
+    error &&
+    typeof error === "object" &&
+    "message" in error &&
+    typeof (error as { message?: unknown }).message === "string" &&
+    (error as { message: string }).message.trim().length > 0
+  ) {
+    const raw = (error as { message: string }).message.toLowerCase();
+    if (raw.includes("row-level security")) return "アクセス権限がありません";
+    if (raw.includes("permission denied")) return "アクセス権限がありません";
+    if (raw.includes("network")) return "ネットワークエラーが発生しました";
+    if (raw.includes("timeout")) return "通信がタイムアウトしました";
+  }
+  return fallback;
+}
+
 export type DashboardUnreadIncident = {
   id: string;
   title: string;
@@ -40,7 +57,7 @@ function formatAnnouncementTime(iso: string): string {
 }
 
 function parseShift(v: string): Shift {
-  return v === "1勤" || v === "2勤" || v === "3勤" ? v : "1勤";
+  return v === "1" || v === "2" || v === "3" ? v : "1";
 }
 
 const INCIDENT_LIMIT = 3;
@@ -73,8 +90,16 @@ export async function fetchDashboardSummary(params: {
       .limit(ANNOUNCEMENT_LIMIT),
   ]);
 
-  if (incidentsRes.error) throw new Error(incidentsRes.error.message);
-  if (announcementsRes.error) throw new Error(announcementsRes.error.message);
+  if (incidentsRes.error) {
+    throw new Error(
+      normalizeDashboardError(incidentsRes.error, "異常報告の取得に失敗しました")
+    );
+  }
+  if (announcementsRes.error) {
+    throw new Error(
+      normalizeDashboardError(announcementsRes.error, "部署連絡の取得に失敗しました")
+    );
+  }
 
   const incidentRows = incidentsRes.data ?? [];
   const unreadIncidents: DashboardUnreadIncident[] = incidentRows.map((row) => ({

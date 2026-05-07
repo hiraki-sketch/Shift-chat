@@ -23,7 +23,6 @@ export function CreateChatThread({ user, onNavigate }: CreateChatThreadProps) {
     selectedShift,
     isPublic,
     allowFileSharing,
-    notifyMembers,
     isSubmitting,
   } = state;
   const { shifts, templates } = data;
@@ -35,7 +34,6 @@ export function CreateChatThread({ user, onNavigate }: CreateChatThreadProps) {
     setSelectedShift,
     setIsPublic,
     setAllowFileSharing,
-    setNotifyMembers,
     applyTemplate,
     handleCancel,
     handleSubmit,
@@ -145,14 +143,6 @@ export function CreateChatThread({ user, onNavigate }: CreateChatThreadProps) {
                       onValueChange={setAllowFileSharing}
                     />
                   </View>
-
-                  <View className="flex-row items-center justify-between">
-                    <Text className="text-sm text-foreground">メンバーに作成通知を送信する</Text>
-                    <Switch
-                      value={notifyMembers}
-                      onValueChange={setNotifyMembers}
-                    />
-                  </View>
                 </View>
               </View>
             </Card>
@@ -245,10 +235,10 @@ export function CreateChatThread({ user, onNavigate }: CreateChatThreadProps) {
                     <Text className="font-bold">公開設定:</Text> 部署全体に公開すると、すべてのメンバーが参加できます。
                   </Text>
                   <Text className="text-sm text-foreground">
-                    <Text className="font-bold">勤務帯設定:</Text> 特定の勤務帯を選択すると、その勤務帯のメンバーのみが対象になります。
+                    <Text className="font-bold">:</Text> 
                   </Text>
                   <Text className="text-sm text-foreground">
-                    <Text className="font-bold">ファイル共有:</Text> 画像や文書などのファイルをチャット内で共有できます。
+                    <Text className="font-bold"></Text> 。
                   </Text>
                 </View>
               </View>

@@ -190,7 +190,7 @@ export function SearchPage({
               <Card>
                 <View className="py-4 px-2">
                   <Text className="text-red-600">
-                    {incidentsErrorMessage ?? "異常報告の検索に失敗しました"}
+                    {incidentsErrorMessage ?? "異常報告の検索に失敗しました。"}
                   </Text>
                   <Pressable onPress={() => refetchIncidents()} className="mt-2 self-start">
                     <Text className="font-medium text-primary">再試行</Text>
@@ -206,7 +206,7 @@ export function SearchPage({
               <Card>
                 <View className="py-4 px-2">
                   <Text className="text-red-600">
-                    {announcementsErrorMessage ?? "検索に失敗しました"}
+                    {announcementsErrorMessage ?? "検索に失敗しました。"}
                   </Text>
                   <Pressable onPress={() => refetchAnnouncements()} className="mt-2 self-start">
                     <Text className="font-medium text-primary">再試行</Text>

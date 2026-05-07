@@ -35,7 +35,7 @@ export function useVacationManagement(user: User, selectedShift: Shift) {
       {
         id: "1",
         userId: user.id,
-        shift: "1勤",
+        shift: "1",
         startDate: "2024-12-25",
         endDate: "2024-12-27",
         type: "paid_leave",
@@ -48,7 +48,7 @@ export function useVacationManagement(user: User, selectedShift: Shift) {
       {
         id: "2",
         userId: user.id,
-        shift: "2勤",
+        shift: "2",
         startDate: "2024-12-30",
         endDate: "2024-12-30",
         type: "personal_leave",
@@ -59,7 +59,7 @@ export function useVacationManagement(user: User, selectedShift: Shift) {
       {
         id: "3",
         userId: user.id,
-        shift: "1勤",
+        shift: "1",
         startDate: "2024-11-20",
         endDate: "2024-11-21",
         type: "paid_leave",
@@ -72,7 +72,7 @@ export function useVacationManagement(user: User, selectedShift: Shift) {
       {
         id: "4",
         userId: user.id,
-        shift: "3勤",
+        shift: "3",
         startDate: "2024-11-01",
         endDate: "2024-11-01",
         type: "sick_leave",

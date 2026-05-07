@@ -4,6 +4,7 @@ import { useRouter } from "expo-router";
 import { useCallback, useMemo, useState } from "react";
 import { ActivityIndicator, Alert, View } from "react-native";
 import { ProfileSettings } from "../components/ProfileSettings";
+import { toJapaneseErrorMessage } from "../src/lib/errorMessages";
 import { useRequireAuth } from "../src/hooks/useRequireAuth";
 
 export default function Profile() {
@@ -33,7 +34,7 @@ export default function Profile() {
 
       const { error } = await supabase.auth.signOut();
       if (error) {
-        Alert.alert("エラー", error.message ?? "ログアウトに失敗しました");
+        Alert.alert("エラー", toJapaneseErrorMessage(error, "ログアウトに失敗しました。"));
         return false;
       }
 

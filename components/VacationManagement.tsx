@@ -41,7 +41,7 @@ export function VacationManagement({
     <ScrollView className="flex-1 bg-gray-50">
       <AppHeader
         title="有給休暇管理"
-        subtitle={`${user.displayName} - ${user.department} (${selectedShift})`}
+        subtitle={`${user.displayName} - ${user.department} (${selectedShift}勤)`}
         onBack={() => onNavigate('index')}
         rightSlot={
           <Button onPress={() => setIsModalOpen(true)}>
@@ -163,7 +163,7 @@ export function VacationManagement({
                 ))}
                 {vacationRequests.length === 0 && (
                   <Text className="text-sm text-gray-500">
-                    {selectedShift} の申請履歴はありません。
+                    {selectedShift}勤 の申請履歴はありません。
                   </Text>
                 )}
               </View>

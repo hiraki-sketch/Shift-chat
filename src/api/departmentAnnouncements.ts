@@ -1,5 +1,25 @@
 import { supabase } from "@/lib/supabase";
 
+function normalizeDepartmentAnnouncementError(
+  error: unknown,
+  fallback: string
+): string {
+  if (
+    error &&
+    typeof error === "object" &&
+    "message" in error &&
+    typeof (error as { message?: unknown }).message === "string" &&
+    (error as { message: string }).message.trim().length > 0
+  ) {
+    const raw = (error as { message: string }).message.toLowerCase();
+    if (raw.includes("row-level security")) return "アクセス権限がありません";
+    if (raw.includes("permission denied")) return "アクセス権限がありません";
+    if (raw.includes("network")) return "ネットワークエラーが発生しました";
+    if (raw.includes("timeout")) return "通信がタイムアウトしました";
+  }
+  return fallback;
+}
+
 export type DepartmentAnnouncement = {
   id: string;
   title: string;
@@ -69,7 +89,11 @@ export async function fetchDepartmentAnnouncements(
     .order("is_pinned", { ascending: false })
     .order("created_at", { ascending: false })
     .limit(maxRows);
-  if (error) throw new Error(error.message);
+  if (error) {
+    throw new Error(
+      normalizeDepartmentAnnouncementError(error, "部署連絡の取得に失敗しました")
+    );
+  }
 
   const rows = (data as AnnouncementRow[] | null) ?? [];
   const authorIds = Array.from(
@@ -87,7 +111,14 @@ export async function fetchDepartmentAnnouncements(
       .select("id, display_name")
       .in("id", authorIds);
 
-    if (profilesError) throw new Error(profilesError.message);
+    if (profilesError) {
+      throw new Error(
+        normalizeDepartmentAnnouncementError(
+          profilesError,
+          "投稿者プロフィールの取得に失敗しました"
+        )
+      );
+    }
 
     for (const profile of profilesData ?? []) {
       authorNameById[profile.id] = profile.display_name ?? null;
@@ -112,7 +143,11 @@ export async function insertDepartmentAnnouncement(
     is_pinned: false,
   });
 
-  if (error) throw new Error(error.message);
+  if (error) {
+    throw new Error(
+      normalizeDepartmentAnnouncementError(error, "部署連絡の投稿に失敗しました")
+    );
+  }
 }
 
 export async function deleteDepartmentAnnouncement(
@@ -126,7 +161,12 @@ export async function deleteDepartmentAnnouncement(
     .single();
 
   if (fetchError) {
-    throw new Error(fetchError.message);
+    throw new Error(
+      normalizeDepartmentAnnouncementError(
+        fetchError,
+        "削除対象の部署連絡取得に失敗しました"
+      )
+    );
   }
 
   const canDelete = target.created_by === input.userId || input.role === "admin";
@@ -142,7 +182,12 @@ export async function deleteDepartmentAnnouncement(
     .eq("id", input.announcementId);
 
   if (deleteError) {
-    throw new Error(deleteError.message);
+    throw new Error(
+      normalizeDepartmentAnnouncementError(
+        deleteError,
+        "部署連絡の削除に失敗しました"
+      )
+    );
   }
 }
 /** PostgREST `or` 用に、ワイルドカードや区切り文字を弱体化した検索トークン */
@@ -179,7 +224,11 @@ export async function searchDepartmentAnnouncements(
     .order("created_at", { ascending: false })
     .limit(10);
 
-  if (error) throw new Error(error.message);
+  if (error) {
+    throw new Error(
+      normalizeDepartmentAnnouncementError(error, "部署連絡の検索に失敗しました")
+    );
+  }
 
   const rows = (data as AnnouncementRow[] | null) ?? [];
   const authorIds = Array.from(
@@ -193,7 +242,14 @@ export async function searchDepartmentAnnouncements(
       .select("id, display_name")
       .in("id", authorIds);
 
-    if (profilesError) throw new Error(profilesError.message);
+    if (profilesError) {
+      throw new Error(
+        normalizeDepartmentAnnouncementError(
+          profilesError,
+          "投稿者プロフィールの取得に失敗しました"
+        )
+      );
+    }
 
     for (const profile of profilesData ?? []) {
       authorNameById[profile.id] = profile.display_name ?? null;

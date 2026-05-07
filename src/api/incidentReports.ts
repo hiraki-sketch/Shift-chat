@@ -3,6 +3,26 @@ import { decode } from "base64-arraybuffer";
 import { File } from "expo-file-system";
 import type { Incident, Shift } from "../../types";
 
+function normalizeIncidentReportError(
+  error: unknown,
+  fallback: string
+): string {
+  if (
+    error &&
+    typeof error === "object" &&
+    "message" in error &&
+    typeof (error as { message?: unknown }).message === "string" &&
+    (error as { message: string }).message.trim().length > 0
+  ) {
+    const raw = (error as { message: string }).message.toLowerCase();
+    if (raw.includes("row-level security")) return "アクセス権限がありません";
+    if (raw.includes("permission denied")) return "アクセス権限がありません";
+    if (raw.includes("network")) return "ネットワークエラーが発生しました";
+    if (raw.includes("timeout")) return "通信がタイムアウトしました";
+  }
+  return fallback;
+}
+
 export type InsertIncidentReportInput = {
   departmentId: string | null;
   reportedBy: string;
@@ -34,16 +54,16 @@ type UploadPhotoInput = {
 const INCIDENT_PHOTO_BUCKET = "incident-report-photos";
 
 function parseShift(v: number): Shift {
-  if (v === 1) return "1勤";
-  if (v === 2) return "2勤";
-  if (v === 3) return "3勤";
-  return "1勤";
+  if (v === 1) return "1";
+  if (v === 2) return "2";
+  if (v === 3) return "3";
+  return "1";
 }
 
 function toShiftNumber(v: Shift): number {
-  if (v === "1勤") return 1;
-  if (v === "2勤") return 2;
-  if (v === "3勤") return 3;
+  if (v === "1") return 1;
+  if (v === "2") return 2;
+  if (v === "3") return 3;
   return 1;
 }
 
@@ -76,7 +96,14 @@ async function buildReporterNameById(rows: IncidentReportRow[]): Promise<Record<
     .select("id, display_name")
     .in("id", reporterIds);
 
-  if (profilesError) throw new Error(profilesError.message);
+  if (profilesError) {
+    throw new Error(
+      normalizeIncidentReportError(
+        profilesError,
+        "報告者プロフィールの取得に失敗しました"
+      )
+    );
+  }
 
   for (const profile of profilesData ?? []) {
     reporterNameById[profile.id] = profile.display_name ?? null;
@@ -111,7 +138,6 @@ function resolveContentType(photo: UploadPhotoInput): string {
 }
 
 function normalizeLocalUri(uri: string): string {
-  // Keep already-schemed URIs like file://, content://, ph:// as-is.
   if (/^[a-zA-Z][a-zA-Z\d+\-.]*:\/\//.test(uri)) {
     return uri;
   }
@@ -141,7 +167,11 @@ export async function fetchIncidentReports(departmentId: string | null): Promise
     .order("created_at", { ascending: false })
     .range(0, maxRows - 1);
 
-  if (error) throw new Error(error.message);
+  if (error) {
+    throw new Error(
+      normalizeIncidentReportError(error, "異常報告の取得に失敗しました")
+    );
+  }
 
   const rows = (data as IncidentReportRow[] | null) ?? [];
   const reporterNameById = await buildReporterNameById(rows);
@@ -187,7 +217,11 @@ export async function searchIncidentReports(
     .order("created_at", { ascending: false })
     .limit(30);
 
-  if (error) throw new Error(error.message);
+  if (error) {
+    throw new Error(
+      normalizeIncidentReportError(error, "異常報告の検索に失敗しました")
+    );
+  }
 
   const rows = (data as IncidentReportRow[] | null) ?? [];
   const reporterNameById = await buildReporterNameById(rows);
@@ -213,7 +247,11 @@ export async function insertIncidentReport(input: InsertIncidentReportInput): Pr
     attachment_urls: normalizedAttachmentUrls,
   });
 
-  if (error) throw new Error(error.message);
+  if (error) {
+    throw new Error(
+      normalizeIncidentReportError(error, "異常報告の登録に失敗しました")
+    );
+  }
 }
 
 export async function deleteIncidentReport(params: {
@@ -234,7 +272,11 @@ export async function deleteIncidentReport(params: {
   }
 
   const { error } = await query;
-  if (error) throw new Error(error.message);
+  if (error) {
+    throw new Error(
+      normalizeIncidentReportError(error, "異常報告の削除に失敗しました")
+    );
+  }
 }
 
 export async function uploadIncidentPhotos(params: {
@@ -269,7 +311,12 @@ export async function uploadIncidentPhotos(params: {
       });
 
     if (uploadError) {
-      throw new Error(`画像アップロードに失敗しました: ${uploadError.message}`);
+      throw new Error(
+        normalizeIncidentReportError(
+          uploadError,
+          "画像アップロードに失敗しました"
+        )
+      );
     }
 
     const { data } = supabase.storage

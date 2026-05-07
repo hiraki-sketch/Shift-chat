@@ -1,5 +1,9 @@
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useMemo, useState } from "react";
 import type { Message, Shift, Thread, User } from "../../types";
+import { getChatMessages, getChatThreads, sendChatMessage } from "../api/chatThreads";
+import { toJapaneseErrorMessage } from "../lib/errorMessages";
+import { queryKeys } from "../lib/queryKeys";
 
 type UseChatThreadsManagementParams = {
   user: User;
@@ -10,89 +14,84 @@ export function useChatThreadsManagement({
   user,
   selectedShift,
 }: UseChatThreadsManagementParams) {
+  const queryClient = useQueryClient();
   const [selectedThread, setSelectedThread] = useState<Thread | null>(null);
   const [newMessage, setNewMessage] = useState("");
+  const threadsQuery = useQuery<Thread[]>({
+    queryKey: queryKeys.chatThreads.list(),
+    queryFn: async () => {
+      const data = await getChatThreads();
+      // MVPでは全体チャットのみ表示
+      return data.filter((thread) => thread.shift === "all");
+    },
+  });
 
-  const threads = useMemo<Thread[]>(
-    () => [
-      {
-        id: "1",
-        title: "1勤 日次引き継ぎ",
-        department: user.department,
-        shift: "1勤",
-        createdBy: "班長おおやま ",
-        createdAt: "2024-12-20 08:00",
-        messageCount: 15,
-      },
-      {
-        id: "2",
-        title: "2勤 設備点検",
-        department: user.department,
-        shift: "2勤",
-        createdBy: "保守 まさし",
-        createdAt: "2024-12-20 16:00",
-        messageCount: 8,
-      },
-      {
-        id: "3",
-        title: "3勤 清掃作業",
-        department: user.department,
-        shift: "3勤",
-        createdBy: "清掃 まさし",
-        createdAt: "2024-12-20 00:00",
-        messageCount: 3,
-      },
-    ],
-    [user.department]
-  );
+  const messagesQuery = useQuery<Message[]>({
+    queryKey: queryKeys.chatThreads.messages(selectedThread?.id ?? ""),
+    enabled: Boolean(selectedThread?.id),
+    queryFn: () => getChatMessages(selectedThread!.id),
+  });
 
-  const mockMessages = useMemo<Message[]>(
-    () => [
-      {
-        id: "1",
-        threadId: "1",
-        author: "班長 まさし",
-        body: "おはようございます。ちゃんとやりよんかいねえ!!!!!本日の作業予定を共有します。",
-        createdAt: "2024-12-20 08:00",
-      },
-      {
-        id: "2",
-        threadId: "1",
-        author: "作業者",
-        body: "すすす、、、すいません!!!!!。ライン2の調子はどうでしょうか？",
-        createdAt: "2024-12-20 08:05",
-      },
-    ],
-    []
-  );
+  const sendMessageMutation = useMutation({
+    mutationFn: sendChatMessage,
+    onSuccess: async (_data, variables) => {
+      await queryClient.invalidateQueries({
+        queryKey: queryKeys.chatThreads.messages(variables.threadId),
+      });
+      await queryClient.invalidateQueries({ queryKey: queryKeys.chatThreads.list() });
+    },
+  });
 
+  const threads = useMemo(() => threadsQuery.data ?? [], [threadsQuery.data]);
   const threadMessages = useMemo(
-    () =>
-      selectedThread
-        ? mockMessages.filter((m) => m.threadId === selectedThread.id)
-        : [],
-    [mockMessages, selectedThread]
+    () => messagesQuery.data ?? [],
+    [messagesQuery.data]
   );
+  const isLoadingThreads = threadsQuery.isPending;
+  const isLoadingMessages = messagesQuery.isPending || messagesQuery.isFetching;
+  const isSendingMessage = sendMessageMutation.isPending;
+  const errorMessage =
+    (threadsQuery.error &&
+      toJapaneseErrorMessage(threadsQuery.error, "チャットスレッドの取得に失敗しました。")) ||
+    (messagesQuery.error &&
+      toJapaneseErrorMessage(messagesQuery.error, "チャットメッセージの取得に失敗しました。")) ||
+    (sendMessageMutation.error &&
+      toJapaneseErrorMessage(sendMessageMutation.error, "チャットメッセージの送信に失敗しました。")) ||
+    null;
 
-  const canSend = newMessage.trim().length > 0;
+  const canSend = newMessage.trim().length > 0 && !sendMessageMutation.isPending;
+
   const isSelectedShiftThreadOnly = useMemo(
     () => threads.some((t) => t.shift === selectedShift),
     [selectedShift, threads]
   );
 
-  const handleSendMessage = useCallback(() => {
+  const handleSendMessage = useCallback(async () => {
     if (!canSend || !selectedThread) return;
-    console.log("新しいメッセージ:", {
-      threadId: selectedThread.id,
-      message: newMessage,
-    });
-    setNewMessage("");
-  }, [canSend, newMessage, selectedThread]);
+
+    const content = newMessage.trim();
+    if (!content) return;
+
+    try {
+      await sendMessageMutation.mutateAsync({
+        threadId: selectedThread.id,
+        userId: user.id,
+        content,
+      });
+      setNewMessage("");
+    } catch (error) {
+      console.error("チャットメッセージ送信エラー:", error);
+    }
+  }, [canSend, newMessage, selectedThread, sendMessageMutation, user.id]);
 
   return {
     state: {
       selectedThread,
       newMessage,
+      isLoadingThreads,
+      isLoadingMessages,
+      isSendingMessage,
+      errorMessage,
     },
     data: {
       threads,
@@ -109,4 +108,3 @@ export function useChatThreadsManagement({
     },
   };
 }
-

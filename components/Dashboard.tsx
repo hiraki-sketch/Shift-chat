@@ -5,6 +5,7 @@ import { ActivityIndicator, Pressable, ScrollView, Text, TouchableOpacity, View 
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useBreakpoint } from "../hooks/useResponsive";
 import { useDashboardManagement } from "../src/hooks/useDashboardManagement";
+import { toJapaneseErrorMessage } from "../src/lib/errorMessages";
 import { Shift, User } from "../types";
 import { ResponsiveGrid } from "./layout/ResponsiveGrid";
 import { Button } from "./ui/button";
@@ -40,6 +41,7 @@ export function Dashboard({
   const { isPending, isError, error, refetch } = query;
   const { bp } = useBreakpoint();
   const narrow = bp === "sm";
+  const selectedShiftLabel = `${selectedShift}勤`;
 
   return (
     <SafeAreaView className="flex-1">
@@ -106,7 +108,7 @@ export function Dashboard({
                   onPress={() => onShiftChange(shift)}
                   className={`flex-1 ${active ? "bg-blue-500 border-blue-500" : "bg-white/20 border-white"}`}
                 >
-                  {shift}
+                  {`${shift}勤`}
                 </Button>
               );
             })}
@@ -144,7 +146,7 @@ export function Dashboard({
               {isError && (
                 <View className="py-3 px-2">
                   <Text className="text-sm text-red-700">
-                    {error instanceof Error ? error.message : "読み込みに失敗しました"}
+                    {toJapaneseErrorMessage(error, "読み込みに失敗しました。")}
                   </Text>
                   <Pressable onPress={() => refetch()} className="mt-2 self-start">
                     <Text className="text-sm text-red-800 font-semibold underline">再試行</Text>
@@ -231,7 +233,7 @@ export function Dashboard({
               {isError && (
                 <View className="py-3 px-2">
                   <Text className="text-sm text-red-700">
-                    {error instanceof Error ? error.message : "読み込みに失敗しました"}
+                    {toJapaneseErrorMessage(error, "読み込みに失敗しました。")}
                   </Text>
                   <Pressable onPress={() => refetch()} className="mt-2 self-start">
                     <Text className="text-sm text-red-800 font-semibold underline">再試行</Text>
@@ -323,13 +325,6 @@ export function Dashboard({
               <Text className="text-lg mt-2 text-indigo-600 font-medium">勤務表</Text>
             </TouchableOpacity>
             <TouchableOpacity
-              className="h-28 items-center justify-center bg-white border border-green-200 rounded-xl"
-              onPress={() => onNavigate("attendance")}
-            >
-              <Text className="text-2xl">⏰</Text>
-              <Text className="text-lg mt-2 text-green-600 font-medium">出勤管理</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
               className="h-28 items-center justify-center bg-white border border-orange-200 rounded-xl"
               onPress={() => onNavigate("vacation")}
             >
@@ -362,7 +357,7 @@ export function Dashboard({
             className="text-base text-cyan-800 font-medium"
             style={{ flex: 1, minWidth: 0, lineHeight: 20, marginTop: narrow ? 4 : 0 }}
           >
-            現在 {selectedShift} 勤務中です。新しい異常報告や重要な連絡がある場合は通知されます。
+            現在 {selectedShiftLabel} 勤務中です。
           </Text>
           </View>
         </G>

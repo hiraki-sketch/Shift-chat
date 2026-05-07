@@ -3,6 +3,7 @@ import { getPasswordRecoveryRedirectTo } from "@/lib/supabase/authRedirect";
 import { supabase } from "@/lib/supabase";
 import { useRouter } from "expo-router";
 import { useCallback, useEffect, useState } from "react";
+import { toJapaneseErrorMessage } from "../lib/errorMessages";
 
 export type DepartmentOption = { id: string; name: string };
 
@@ -24,7 +25,7 @@ const AUTH_ERROR_MESSAGES: Record<string, string> = {
 function getAuthErrorMessage(error: AuthError): string {
   return (
     AUTH_ERROR_MESSAGES[error?.code ?? ""] ??
-    error?.message ??
+    toJapaneseErrorMessage(error, "認証中にエラーが発生しました。") ??
     "認証中にエラーが発生しました。"
   );
 }
@@ -189,7 +190,7 @@ export function useLoginScreenManagement({
       }
     } catch (e) {
       console.error("handleSignUp error:", e);
-      setError("予期しないエラーが発生しました");
+      setError("予期しないエラーが発生しました。");
     } finally {
       setIsLoading(false);
     }
@@ -216,7 +217,7 @@ export function useLoginScreenManagement({
       router.replace("/");
     } catch (e) {
       console.error("handleSignIn error:", e);
-      setError("予期しないエラーが発生しました");
+      setError("予期しないエラーが発生しました。");
     } finally {
       setIsLoading(false);
     }

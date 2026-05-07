@@ -1,26 +1,35 @@
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useMemo, useState } from "react";
-import type { Shift, Thread, User } from "../../types";
+import type { Shift, User } from "../../types";
+import { createChatThread } from "../api/chatThreads";
+import { toJapaneseErrorMessage } from "../lib/errorMessages";
+import { queryKeys } from "../lib/queryKeys";
 
 type ShiftOrAll = Shift | "all";
 type ActionResult = { ok: boolean; title: string; message: string };
 
 export function useCreateChatThreadManagement(user: User) {
+  const queryClient = useQueryClient();
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [selectedShift, setSelectedShift] = useState<ShiftOrAll>("all");
   const [isPublic, setIsPublic] = useState(true);
   const [allowFileSharing, setAllowFileSharing] = useState(true);
-  const [notifyMembers, setNotifyMembers] = useState(true);
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const createThreadMutation = useMutation({
+    mutationFn: createChatThread,
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: queryKeys.chatThreads.list() });
+    },
+  });
 
-  const shifts = useMemo<ShiftOrAll[]>(() => ["all", "1勤", "2勤", "3勤"], []);
+  const shifts = useMemo<ShiftOrAll[]>(() => ["all", "1", "2", "3"], []);
 
   const templates = useMemo(
     () => [
       {
         title: "日次引き継ぎ - {shift}",
         description: "勤務帯の引き継ぎ事項や注意事項を共有するためのチャットです。",
-        shift: "1勤" as ShiftOrAll,
+        shift: "1" as ShiftOrAll,
       },
       {
         title: "設備点検連絡",
@@ -34,7 +43,7 @@ export function useCreateChatThreadManagement(user: User) {
       },
       {
         title: "安全管理連絡",
-        description: "安全に関する情報共有や事故報告を行うためのチャットです。",
+        description: "安全に関する情報共有や報告を行うためのチャットです。",
         shift: "all" as ShiftOrAll,
       },
     ],
@@ -47,10 +56,12 @@ export function useCreateChatThreadManagement(user: User) {
     switch (shift) {
       case "all":
         return "全勤務帯";
-      case "1勤":
-      case "2勤":
-      case "3勤":
-        return shift;
+      case "1":
+        return "1勤";
+      case "2":
+        return "2勤";
+      case "3":
+        return "3勤";
       default:
         return "不明";
     }
@@ -60,11 +71,11 @@ export function useCreateChatThreadManagement(user: User) {
     switch (shift) {
       case "all":
         return "bg-gray-100";
-      case "1勤":
+      case "1":
         return "bg-blue-100";
-      case "2勤":
+      case "2":
         return "bg-green-100";
-      case "3勤":
+      case "3":
         return "bg-purple-100";
       default:
         return "bg-gray-100";
@@ -79,7 +90,7 @@ export function useCreateChatThreadManagement(user: User) {
       setDescription(template.description);
       setSelectedShift(template.shift);
     },
-    [templates]
+    []
   );
 
   const handleCancel = useCallback((): ActionResult => {
@@ -102,42 +113,58 @@ export function useCreateChatThreadManagement(user: User) {
       };
     }
 
-    setIsSubmitting(true);
-    const newThread: Thread = {
-      id: Date.now().toString(),
-      title: title.trim(),
-      department: user.department,
-      shift: selectedShift === "all" ? undefined : selectedShift,
-      createdBy: user.displayName,
-      createdAt: new Date().toISOString(),
-      messageCount: 0,
-    };
+    if (!user.departmentId) {
+      return {
+        ok: false,
+        title: "作成できません",
+        message: "プロフィールに部署が設定されていません",
+      };
+    }
 
-    console.log("新しいチャットスレッド:", {
-      ...newThread,
-      description,
-      isPublic,
-      allowFileSharing,
-      notifyMembers,
-    });
+    try {
+      await createThreadMutation.mutateAsync({
+        title: title.trim(),
+        departmentId: user.departmentId,
+        shift: selectedShift,
+        createdBy: user.id,
+      });
 
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-    setIsSubmitting(false);
-
-    return {
-      ok: true,
-      title: "作成完了",
-      message: "チャットスレッドを作成しました",
-    };
+      console.log("新しいチャットスレッド:", {
+        title: title.trim(),
+        departmentId: user.departmentId,
+        departmentName: user.departmentName ?? user.department,
+        shift: selectedShift,
+        createdBy: user.displayName,
+        description,
+        isPublic,
+        allowFileSharing,
+      });
+      
+      return {
+        ok: true,
+        title: "作成完了",
+        message: "チャットスレッドを作成しました",
+      };
+    } catch (error) {
+      const message = toJapaneseErrorMessage(error, "チャットスレッドの作成に失敗しました。");
+      return {
+        ok: false,
+        title: "作成失敗",
+        message,
+      };
+    }
   }, [
     allowFileSharing,
     description,
     isPublic,
-    notifyMembers,
     selectedShift,
     title,
     user.department,
+    user.departmentId,
+    user.departmentName,
     user.displayName,
+    user.id,
+    createThreadMutation,
   ]);
 
   return {
@@ -147,8 +174,7 @@ export function useCreateChatThreadManagement(user: User) {
       selectedShift,
       isPublic,
       allowFileSharing,
-      notifyMembers,
-      isSubmitting,
+      isSubmitting: createThreadMutation.isPending,
     },
     data: {
       shifts,
@@ -167,7 +193,6 @@ export function useCreateChatThreadManagement(user: User) {
       setSelectedShift,
       setIsPublic,
       setAllowFileSharing,
-      setNotifyMembers,
       applyTemplate,
       handleCancel,
       handleSubmit,

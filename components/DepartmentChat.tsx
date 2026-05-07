@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useDepartmentChatManagement } from "../src/hooks/useDepartmentChatManagement";
+import { toJapaneseErrorMessage } from "../src/lib/errorMessages";
 import { useShiftStore } from "../src/stores/useShiftStore";
 import { User } from '../types';
 import { ResponsiveGrid } from "./layout/ResponsiveGrid";
@@ -66,7 +67,7 @@ export function DepartmentChat({ user, onNavigate }: DepartmentChatProps) {
         {isError && (
           <View className="mb-4 rounded-lg border border-destructive/30 bg-destructive/10 p-4">
             <Text className="text-destructive">
-              {error instanceof Error ? error.message : "読み込みに失敗しました"}
+              {toJapaneseErrorMessage(error, "読み込みに失敗しました。")}
             </Text>
             <Pressable onPress={() => refetch()} className="mt-2 self-start">
               <Text className="font-medium text-primary">再試行</Text>

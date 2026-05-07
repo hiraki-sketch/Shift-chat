@@ -5,7 +5,7 @@ import { fetchDashboardSummary } from "../api/dashboard";
 import { queryKeys } from "../lib/queryKeys";
 
 export function useDashboardManagement(user: User) {
-  const shifts = useMemo<Shift[]>(() => ["1勤", "2勤", "3勤"], []);
+  const shifts = useMemo<Shift[]>(() => ["1", "2", "3"], []);
 
   const summaryQuery = useQuery({
     queryKey: queryKeys.dashboard.summary(user.id, user.departmentId),
