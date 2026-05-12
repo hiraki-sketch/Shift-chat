@@ -1,5 +1,10 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import {
+  InteractionManager,
+  Keyboard,
+  Platform,
+} from "react-native";
 import type { Shift, User } from "../../types";
 import {
   deleteIncidentReport,
@@ -172,6 +177,18 @@ export function useIncidentReportManagement(user: User, selectedShift: Shift) {
     }
 
     try {
+      // 本文入力などでキーボードが開いたままピッカーを起動すると、端末によっては
+      // 画面が固まったように見えることがあるため、先に閉じてからネイティブ UI を出す
+      Keyboard.dismiss();
+      await new Promise<void>((resolve) => {
+        InteractionManager.runAfterInteractions(() => resolve());
+      });
+      if (Platform.OS === "android") {
+        await new Promise<void>((resolve) => setTimeout(resolve, 450));
+      } else {
+        await new Promise<void>((resolve) => setTimeout(resolve, 120));
+      }
+
       const permission = await requestMediaLibraryPermissionsAsync();
       if (!permission.granted) {
         return {

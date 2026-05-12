@@ -1,11 +1,11 @@
 //profile-settings.tsx
-import { ActivityIndicator, Alert, ScrollView, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, Linking, Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useProfileSettingsManagement } from "../src/hooks/useProfileSettingsManagement";
 import { User } from '../types';
+import { AppHeader } from './ui/app-header';
 import { Badge } from './ui/badge';
 import { Button } from './ui/button';
-import { AppHeader } from './ui/app-header';
 import { Card } from './ui/card';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
@@ -20,7 +20,6 @@ interface ProfileSettingsProps {
 export function ProfileSettings({ user, onNavigate, onLogout }: ProfileSettingsProps) {
   const { state, utils, actions } = useProfileSettingsManagement({
     user,
-    onNavigate,
     onLogout,
   });
   const {
@@ -38,6 +37,19 @@ export function ProfileSettings({ user, onNavigate, onLogout }: ProfileSettingsP
     handleSaveProfile,
     handleLogoutInternal,
   } = actions;
+  const externalLinks = [
+    { label: "利用規約", url: "https://genba-web-sigma.vercel.app/terms" },
+    { label: "プライバシーポリシー", url: "https://genba-web-sigma.vercel.app/privacy" },
+    { label: "お問い合わせ", url: "https://genba-web-sigma.vercel.app/contact" },
+  ] as const;
+
+  const openExternalLink = async (url: string) => {
+    try {
+      await Linking.openURL(url);
+    } catch {
+      Alert.alert("エラー", "リンクを開けませんでした。時間を置いて再度お試しください。");
+    }
+  };
 
   return (
     <SafeAreaView className="flex-1">
@@ -131,6 +143,18 @@ export function ProfileSettings({ user, onNavigate, onLogout }: ProfileSettingsP
               不正アクセスや情報漏洩の防止にご協力ください。
             </Text>
           </View>
+        </View>
+
+        <View className="pt-2 pb-6">
+          {externalLinks.map((item) => (
+            <Pressable
+              key={item.url}
+              onPress={() => void openExternalLink(item.url)}
+              className="py-3 border-b border-slate-200"
+            >
+              <Text className="text-slate-700 text-sm">{item.label}</Text>
+            </Pressable>
+          ))}
         </View>
       </View>
     </ScrollView>

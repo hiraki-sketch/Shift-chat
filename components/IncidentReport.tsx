@@ -1,6 +1,16 @@
 import { Image } from "expo-image";
 import { ImagePlus, Trash2, X } from "lucide-react-native";
-import { ActivityIndicator, Alert, Pressable, ScrollView, Text, View } from "react-native";
+import { useRef } from "react";
+import {
+  ActivityIndicator,
+  Alert,
+  Keyboard,
+  Pressable,
+  ScrollView,
+  Text,
+  TextInput,
+  View,
+} from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useIncidentReportManagement } from "../src/hooks/useIncidentReportManagement";
 import { toJapaneseErrorMessage } from "../src/lib/errorMessages";
@@ -19,6 +29,9 @@ interface IncidentReportProps {
 }
 
 export function IncidentReport({ user, selectedShift, onNavigate }: IncidentReportProps) {
+  const titleInputRef = useRef<TextInput>(null);
+  const bodyInputRef = useRef<TextInput>(null);
+
   const { state, data, derived, utils, actions, query } = useIncidentReportManagement(
     user,
     selectedShift
@@ -94,82 +107,89 @@ export function IncidentReport({ user, selectedShift, onNavigate }: IncidentRepo
                 </View>
               )}
 
-              {user.departmentId &&
-                !isPending &&
-                !isError &&
-                existingReports.map((report) => (
-                  <Card key={report.id} className="min-w-0 overflow-hidden">
-                    <View className="p-4 min-w-0">
-                      <View className="pb-3 min-w-0">
-                        <Text className="text-lg font-semibold" selectable>
-                          {report.title}
-                        </Text>
-                        <View className="flex-row flex-wrap items-center gap-2 mt-2">
-                          <View className={`w-3 h-3 rounded-full shrink-0 ${getSeverityColor(report.severity)}`} />
-                          <Badge variant="outline">{getSeverityText(report.severity)}</Badge>
-                          <Badge variant="secondary">{report.shift}</Badge>
-                        </View>
-                      </View>
-
-                      <View className="min-w-0">
-                        <Text className="text-foreground mb-3" selectable>
-                          {report.body}
-                        </Text>
-                        {!!report.attachmentUrls?.length && (
-                          <ScrollView
-                            horizontal
-                            showsHorizontalScrollIndicator={false}
-                            className="mb-3"
-                            contentContainerStyle={{ gap: 8 }}
-                          >
-                            {report.attachmentUrls.map((url) => (
-                              <Image
-                                key={url}
-                                source={{ uri: url }}
-                                style={{ width: 96, height: 96, borderRadius: 8 }}
-                                contentFit="cover"
-                              />
-                            ))}
-                          </ScrollView>
-                        )}
-                        <Text className="text-xs text-muted-foreground" numberOfLines={1}>
-                          投稿者: {report.reporterName ?? "不明"}
-                        </Text>
-                        <Text className="text-xs text-muted-foreground" numberOfLines={2}>
-                          作成: {new Date(report.createdAt).toLocaleString("ja-JP")}
-                        </Text>
-                        <Text className="text-xs text-muted-foreground" numberOfLines={2}>
-                          更新: {new Date(report.updatedAt).toLocaleString("ja-JP")}
-                        </Text>
-                        {canDeleteReport(report) && (
-                          <View className="mt-3">
-                            <Button
-                              variant="outline"
-                              disabled={isDeleting}
-                              onPress={() => {
-                                Alert.alert("異常報告の削除", "この報告を削除します。よろしいですか？", [
-                                  { text: "キャンセル", style: "cancel" },
-                                  {
-                                    text: "削除",
-                                    style: "destructive",
-                                    onPress: async () => {
-                                      const res = await handleDeleteReport(report.id);
-                                      Alert.alert(res.title, res.message);
-                                    },
-                                  },
-                                ]);
-                              }}
-                              className="border-destructive"
-                            >
-                              <Trash2 size={16} color="#dc2626" />
-                              <Text className="ml-2 text-destructive">削除</Text>
-                            </Button>
+              {user.departmentId && !isPending && !isError && (
+                <>
+                  {existingReports.length === 0 ? (
+                    <Text className="text-muted-foreground py-4">
+                      異常報告はまだありません
+                    </Text>
+                  ) : (
+                    existingReports.map((report) => (
+                      <Card key={report.id} className="min-w-0 overflow-hidden">
+                        <View className="p-4 min-w-0">
+                          <View className="pb-3 min-w-0">
+                            <Text className="text-lg font-semibold" selectable>
+                              {report.title}
+                            </Text>
+                            <View className="flex-row flex-wrap items-center gap-2 mt-2">
+                              <View className={`w-3 h-3 rounded-full shrink-0 ${getSeverityColor(report.severity)}`} />
+                              <Badge variant="outline">{getSeverityText(report.severity)}</Badge>
+                              <Badge variant="secondary">{report.shift}</Badge>
+                            </View>
                           </View>
-                        )}
-                      </View>
-                    </View>
-                  </Card>
-                ))}
+
+                          <View className="min-w-0">
+                            <Text className="text-foreground mb-3" selectable>
+                              {report.body}
+                            </Text>
+                            {!!report.attachmentUrls?.length && (
+                              <ScrollView
+                                horizontal
+                                showsHorizontalScrollIndicator={false}
+                                className="mb-3"
+                                contentContainerStyle={{ gap: 8 }}
+                              >
+                                {report.attachmentUrls.map((url) => (
+                                  <Image
+                                    key={url}
+                                    source={{ uri: url }}
+                                    style={{ width: 96, height: 96, borderRadius: 8 }}
+                                    contentFit="cover"
+                                  />
+                                ))}
+                              </ScrollView>
+                            )}
+                            <Text className="text-xs text-muted-foreground" numberOfLines={1}>
+                              投稿者: {report.reporterName ?? "不明"}
+                            </Text>
+                            <Text className="text-xs text-muted-foreground" numberOfLines={2}>
+                              作成: {new Date(report.createdAt).toLocaleString("ja-JP")}
+                            </Text>
+                            <Text className="text-xs text-muted-foreground" numberOfLines={2}>
+                              更新: {new Date(report.updatedAt).toLocaleString("ja-JP")}
+                            </Text>
+                            {canDeleteReport(report) && (
+                              <View className="mt-3">
+                                <Button
+                                  variant="outline"
+                                  disabled={isDeleting}
+                                  onPress={() => {
+                                    Alert.alert("異常報告の削除", "この報告を削除します。よろしいですか？", [
+                                      { text: "キャンセル", style: "cancel" },
+                                      {
+                                        text: "削除",
+                                        style: "destructive",
+                                        onPress: async () => {
+                                          const res = await handleDeleteReport(report.id);
+                                          Alert.alert(res.title, res.message);
+                                        },
+                                      },
+                                    ]);
+                                  }}
+                                  className="border-destructive"
+                                >
+                                  <Trash2 size={16} color="#dc2626" />
+                                  <Text className="ml-2 text-destructive">削除</Text>
+                                </Button>
+                              </View>
+                            )}
+                          </View>
+                        </View>
+                      </Card>
+                    ))
+                  )}
+                </>
+              )}
             </View>
           ) : (
             <View className="gap-6 flex-1 min-w-0">
@@ -183,6 +203,7 @@ export function IncidentReport({ user, selectedShift, onNavigate }: IncidentRepo
                   <View className="min-w-0">
                     <Label>タイトル *</Label>
                     <Input
+                      ref={titleInputRef}
                       value={title}
                       onChangeText={setTitle}
                       placeholder="異常の概要を入力"
@@ -193,6 +214,7 @@ export function IncidentReport({ user, selectedShift, onNavigate }: IncidentRepo
                   <View className="min-w-0">
                     <Label>本文 *</Label>
                     <Input
+                      ref={bodyInputRef}
                       value={body}
                       onChangeText={setBody}
                       placeholder="詳細を記入してください"
@@ -209,6 +231,16 @@ export function IncidentReport({ user, selectedShift, onNavigate }: IncidentRepo
                       <Button
                         variant="outline"
                         onPress={async () => {
+                          // キーボード／フォーカスが残ったままピッカーを開くと固まる端末があるため、
+                          // 先に入力からフォーカスを外してからネイティブ UI を起動する
+                          titleInputRef.current?.blur();
+                          bodyInputRef.current?.blur();
+                          Keyboard.dismiss();
+                          await new Promise<void>((resolve) => {
+                            requestAnimationFrame(() => {
+                              requestAnimationFrame(() => resolve());
+                            });
+                          });
                           const res = await handlePickPhoto();
                           if (!res.ok) {
                             Alert.alert(res.title, res.message);

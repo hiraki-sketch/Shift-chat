@@ -19,6 +19,8 @@ export default {
       infoPlist: {
         CFBundleDisplayName: "GENBA",
         ITSAppUsesNonExemptEncryption: false,
+        NSCameraUsageDescription: "異常報告用の写真撮影に使用します",
+        NSPhotoLibraryUsageDescription: "異常報告用の画像選択に使用します",
       },
     },
     // package は ios.bundleIdentifier と揃える（ストア・既存インストールの連続性のため）
