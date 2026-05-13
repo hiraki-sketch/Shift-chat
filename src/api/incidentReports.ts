@@ -53,6 +53,59 @@ type UploadPhotoInput = {
 
 const INCIDENT_PHOTO_BUCKET = "incident-report-photos";
 
+/** DB にはストレージパス（または移行前の公開 URL）を保存。表示時は署名 URL に解決する。 */
+const ATTACHMENT_SIGNED_URL_TTL_SECONDS = 3600;
+
+function attachmentRefToStoragePath(ref: string): string {
+  const trimmed = ref.trim();
+  if (!trimmed.startsWith("http://") && !trimmed.startsWith("https://")) {
+    return trimmed.replace(/^\/+/, "");
+  }
+  try {
+    const u = new URL(trimmed);
+    const publicMarker = `/object/public/${INCIDENT_PHOTO_BUCKET}/`;
+    const pubIdx = u.pathname.indexOf(publicMarker);
+    if (pubIdx >= 0) {
+      return decodeURIComponent(u.pathname.slice(pubIdx + publicMarker.length));
+    }
+    const authMarker = `/object/authenticated/${INCIDENT_PHOTO_BUCKET}/`;
+    const authIdx = u.pathname.indexOf(authMarker);
+    if (authIdx >= 0) {
+      return decodeURIComponent(u.pathname.slice(authIdx + authMarker.length));
+    }
+  } catch {
+    /* ignore */
+  }
+  return trimmed;
+}
+
+async function resolveIncidentAttachmentSignUrls(
+  stored: (string | null)[] | null | undefined
+): Promise<string[]> {
+  const refs = (stored ?? []).filter((x): x is string => typeof x === "string" && x.trim().length > 0);
+  if (refs.length === 0) return [];
+
+  const out: string[] = [];
+  for (const ref of refs) {
+    const path = attachmentRefToStoragePath(ref);
+    const { data, error } = await supabase.storage
+      .from(INCIDENT_PHOTO_BUCKET)
+      .createSignedUrl(path, ATTACHMENT_SIGNED_URL_TTL_SECONDS);
+    if (error || !data?.signedUrl) continue;
+    out.push(data.signedUrl);
+  }
+  return out;
+}
+
+async function incidentsWithSignedAttachments(incidents: Incident[]): Promise<Incident[]> {
+  return Promise.all(
+    incidents.map(async (inc) => ({
+      ...inc,
+      attachmentUrls: await resolveIncidentAttachmentSignUrls(inc.attachmentUrls),
+    }))
+  );
+}
+
 function parseShift(v: number): Shift {
   if (v === 1) return "1";
   if (v === 2) return "2";
@@ -175,7 +228,8 @@ export async function fetchIncidentReports(departmentId: string | null): Promise
 
   const rows = (data as IncidentReportRow[] | null) ?? [];
   const reporterNameById = await buildReporterNameById(rows);
-  return rows.slice(0, maxRows).map((row) => mapRow(row, reporterNameById));
+  const incidents = rows.slice(0, maxRows).map((row) => mapRow(row, reporterNameById));
+  return incidentsWithSignedAttachments(incidents);
 }
 
 function sanitizeIncidentSearchToken(keyword: string): string {
@@ -225,7 +279,8 @@ export async function searchIncidentReports(
 
   const rows = (data as IncidentReportRow[] | null) ?? [];
   const reporterNameById = await buildReporterNameById(rows);
-  return rows.map((row) => mapRow(row, reporterNameById));
+  const incidents = rows.map((row) => mapRow(row, reporterNameById));
+  return incidentsWithSignedAttachments(incidents);
 }
 
 export async function insertIncidentReport(input: InsertIncidentReportInput): Promise<void> {
@@ -287,46 +342,41 @@ export async function uploadIncidentPhotos(params: {
   const { departmentId, userId, photos } = params;
   if (!photos.length) return [];
 
-  const uploadedUrls: string[] = [];
+  const batchId = Date.now();
 
-  for (let i = 0; i < photos.length; i += 1) {
-    const photo = photos[i];
-    const { uri } = photo;
+  return Promise.all(
+    photos.map(async (photo, i) => {
+      const { uri } = photo;
 
-    const contentType = resolveContentType(photo);
-    const extension = getFileExtensionFromContentType(contentType);
-    const path = `${departmentId}/${userId}/${Date.now()}-${i}.${extension}`;
+      const contentType = resolveContentType(photo);
+      const extension = getFileExtensionFromContentType(contentType);
+      const path = `${departmentId}/${userId}/${batchId}-${i}.${extension}`;
 
-    const normalizedUri = normalizeLocalUri(uri);
+      const normalizedUri = normalizeLocalUri(uri);
 
-    const file = new File(normalizedUri);
-    const base64 = await file.base64();
-    const arrayBuffer = decode(base64);
+      const file = new File(normalizedUri);
+      const base64 = await file.base64();
+      const arrayBuffer = decode(base64);
 
-    const { error: uploadError } = await supabase.storage
-      .from(INCIDENT_PHOTO_BUCKET)
-      .upload(path, arrayBuffer, {
-        contentType,
-        upsert: false,
-      });
+      const { error: uploadError } = await supabase.storage
+        .from(INCIDENT_PHOTO_BUCKET)
+        .upload(path, arrayBuffer, {
+          contentType,
+          upsert: false,
+        });
 
-    if (uploadError) {
-      throw new Error(
-        normalizeIncidentReportError(
-          uploadError,
-          "画像アップロードに失敗しました"
-        )
-      );
-    }
+      if (uploadError) {
+        throw new Error(
+          normalizeIncidentReportError(
+            uploadError,
+            "画像アップロードに失敗しました"
+          )
+        );
+      }
 
-    const { data } = supabase.storage
-      .from(INCIDENT_PHOTO_BUCKET)
-      .getPublicUrl(path);
-
-    uploadedUrls.push(data.publicUrl);
-  }
-
-  return uploadedUrls;
+      return path;
+    })
+  );
 }
 
 
