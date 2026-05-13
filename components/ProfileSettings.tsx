@@ -1,4 +1,5 @@
 //profile-settings.tsx
+import { LogOut, Shield, User as UserIcon } from "lucide-react-native";
 import { ActivityIndicator, Alert, Linking, Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useProfileSettingsManagement } from "../src/hooks/useProfileSettingsManagement";
@@ -67,7 +68,14 @@ export function ProfileSettings({ user, onNavigate, onLogout }: ProfileSettingsP
             }}
             className="border-red-500"
           >
-            {loadingLogout ? <ActivityIndicator /> : <Text className="text-red-500">🚪 ログアウト</Text>}
+            {loadingLogout ? (
+              <ActivityIndicator />
+            ) : (
+              <View className="flex-row items-center">
+                <LogOut size={16} color="#ef4444" />
+                <Text className="text-red-500 ml-2">ログアウト</Text>
+              </View>
+            )}
           </Button>
         }
       />
@@ -76,10 +84,10 @@ export function ProfileSettings({ user, onNavigate, onLogout }: ProfileSettingsP
         {/* プロフィール情報 */}
         <Card className="rounded-2xl p-4">
           <View className="mb-4">
-            <Text className="text-lg font-semibold flex-row items-center">
-              <Text className="mr-2">👤</Text>
-              <Text>プロフィール情報</Text>
-            </Text>
+            <View className="flex-row items-center">
+              <UserIcon size={18} color="#111827" />
+              <Text className="text-lg font-semibold ml-2">プロフィール情報</Text>
+            </View>
           </View>
           <View className="space-y-4">
             <View className="space-y-2">
@@ -137,7 +145,7 @@ export function ProfileSettings({ user, onNavigate, onLogout }: ProfileSettingsP
         {/* 注意事項 */}
         <View className="bg-blue-50 border border-blue-200 rounded-lg p-4">
           <View className="flex-row items-start space-x-3">
-            <Text className="text-blue-600 text-lg">🛡️</Text>
+            <Shield size={20} color="#2563eb" />
             <Text className="text-blue-800 text-sm flex-1">
               このアプリで扱うデータは業務上重要な情報です。適切なセキュリティ管理を心がけ、
               不正アクセスや情報漏洩の防止にご協力ください。

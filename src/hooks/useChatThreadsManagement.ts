@@ -2,6 +2,11 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useMemo, useState } from "react";
 import type { Message, Shift, Thread, User } from "../../types";
 import { getChatMessages, getChatThreads, sendChatMessage } from "../api/chatThreads";
+import {
+  CHAT_MESSAGE_MAX_LENGTH,
+  getLiveValidationMessage,
+  getSubmitValidationMessage,
+} from "../lib/inputValidation";
 import { toJapaneseErrorMessage } from "../lib/errorMessages";
 import { queryKeys } from "../lib/queryKeys";
 
@@ -59,7 +64,17 @@ export function useChatThreadsManagement({
       toJapaneseErrorMessage(sendMessageMutation.error, "チャットメッセージの送信に失敗しました。")) ||
     null;
 
-  const canSend = newMessage.trim().length > 0 && !sendMessageMutation.isPending;
+  const messageError = getLiveValidationMessage(
+    newMessage,
+    "チャット本文",
+    CHAT_MESSAGE_MAX_LENGTH
+  );
+  const messageSubmitError = getSubmitValidationMessage(
+    newMessage,
+    "チャット本文",
+    CHAT_MESSAGE_MAX_LENGTH
+  );
+  const canSend = !messageSubmitError && !sendMessageMutation.isPending;
 
   const isSelectedShiftThreadOnly = useMemo(
     () => threads.some((t) => t.shift === selectedShift),
@@ -70,7 +85,7 @@ export function useChatThreadsManagement({
     if (!canSend || !selectedThread) return;
 
     const content = newMessage.trim();
-    if (!content) return;
+    if (!content || messageSubmitError) return;
 
     try {
       await sendMessageMutation.mutateAsync({
@@ -82,7 +97,7 @@ export function useChatThreadsManagement({
     } catch (error) {
       console.error("チャットメッセージ送信エラー:", error);
     }
-  }, [canSend, newMessage, selectedThread, sendMessageMutation, user.id]);
+  }, [canSend, messageSubmitError, newMessage, selectedThread, sendMessageMutation, user.id]);
 
   return {
     state: {
@@ -99,6 +114,9 @@ export function useChatThreadsManagement({
     },
     derived: {
       canSend,
+      messageError,
+      messageLength: newMessage.length,
+      messageMaxLength: CHAT_MESSAGE_MAX_LENGTH,
       isSelectedShiftThreadOnly,
     },
     actions: {

@@ -6,6 +6,12 @@ import {
   fetchDepartmentAnnouncements,
   insertDepartmentAnnouncement,
 } from "../api/departmentAnnouncements";
+import {
+  BODY_MAX_LENGTH,
+  DEPARTMENT_ANNOUNCEMENT_TITLE_MAX_LENGTH,
+  getLiveValidationMessage,
+  getSubmitValidationMessage,
+} from "../lib/inputValidation";
 import { queryKeys } from "../lib/queryKeys";
 
 export function useDepartmentChatManagement(user: User) {
@@ -22,6 +28,7 @@ export function useDepartmentChatManagement(user: User) {
     queryFn: () => fetchDepartmentAnnouncements(user.departmentId),
   });
 
+  const [announcementTitle, setAnnouncementTitle] = useState("");
   const [newAnnouncement, setNewAnnouncement] = useState("");
   const [isComposing, setIsComposing] = useState(false);
 
@@ -30,6 +37,7 @@ export function useDepartmentChatManagement(user: User) {
   const createAnnouncementMutation = useMutation({
     mutationFn: insertDepartmentAnnouncement,
     onSuccess: async () => {
+      setAnnouncementTitle("");
       setNewAnnouncement("");
       setIsComposing(false);
       await queryClient.invalidateQueries({ queryKey: listQueryKey });
@@ -58,8 +66,23 @@ export function useDepartmentChatManagement(user: User) {
   });
 
   const isSending = createAnnouncementMutation.isPending;
-
-  const canSend = newAnnouncement.trim().length > 0 && Boolean(user.departmentId) && !isSending;
+  const titleError = getLiveValidationMessage(
+    announcementTitle,
+    "部署連絡タイトル",
+    DEPARTMENT_ANNOUNCEMENT_TITLE_MAX_LENGTH
+  );
+  const bodyError = getLiveValidationMessage(newAnnouncement, "本文", BODY_MAX_LENGTH);
+  const titleSubmitError = getSubmitValidationMessage(
+    announcementTitle,
+    "部署連絡タイトル",
+    DEPARTMENT_ANNOUNCEMENT_TITLE_MAX_LENGTH
+  );
+  const bodySubmitError = getSubmitValidationMessage(
+    newAnnouncement,
+    "本文",
+    BODY_MAX_LENGTH
+  );
+  const canSend = !titleSubmitError && !bodySubmitError && Boolean(user.departmentId) && !isSending;
 
   const handleToggleCompose = useCallback(() => {
     setIsComposing((prev) => !prev);
@@ -67,18 +90,23 @@ export function useDepartmentChatManagement(user: User) {
 
   const handleCancelCompose = useCallback(() => {
     setIsComposing(false);
+    setAnnouncementTitle("");
     setNewAnnouncement("");
   }, []);
 
   const handleSendAnnouncement = useCallback(async (): Promise<
     { ok: true } | { ok: false; message: string }
   > => {
-    if (!canSend || !user.departmentId) {
-      return { ok: false, message: "部署が未設定か、入力がありません" };
+    if (!user.departmentId) {
+      return { ok: false, message: "部署が未設定のため投稿できません" };
+    }
+    const validationMessage = titleSubmitError ?? bodySubmitError;
+    if (validationMessage) {
+      return { ok: false, message: validationMessage };
     }
 
     const body = newAnnouncement.trim();
-    const title = body.length > 20 ? `${body.slice(0, 20)}...` : body;
+    const title = announcementTitle.trim();
 
     try {
       await createAnnouncementMutation.mutateAsync({
@@ -93,9 +121,11 @@ export function useDepartmentChatManagement(user: User) {
       const message = e instanceof Error ? e.message : "投稿に失敗しました";
       return { ok: false, message };
   }}, [
-    canSend,
+    announcementTitle,
     createAnnouncementMutation,
     newAnnouncement,
+    bodySubmitError,
+    titleSubmitError,
     user.departmentId,
     user.id,
   ]);
@@ -122,6 +152,7 @@ export function useDepartmentChatManagement(user: User) {
   );
   return {
     state: {
+      announcementTitle,
       newAnnouncement,
       isComposing,
       isSending,
@@ -132,8 +163,15 @@ export function useDepartmentChatManagement(user: User) {
     },
     derived: {
       canSend,
+      titleError,
+      bodyError,
+      titleLength: announcementTitle.length,
+      bodyLength: newAnnouncement.length,
+      titleMaxLength: DEPARTMENT_ANNOUNCEMENT_TITLE_MAX_LENGTH,
+      bodyMaxLength: BODY_MAX_LENGTH,
     },
     actions: {
+      setAnnouncementTitle,
       setNewAnnouncement,
       handleToggleCompose,
       handleCancelCompose,

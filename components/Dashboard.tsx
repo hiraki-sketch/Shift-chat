@@ -12,6 +12,7 @@ import { Button } from "./ui/button";
 import {
   AlertTriangle,
   Bell,
+  Calendar,
   MessageSquare,
   Search,
   Settings,
@@ -321,7 +322,7 @@ export function Dashboard({
               className="h-28 items-center justify-center bg-white border border-indigo-200 rounded-xl"
               onPress={() => onNavigate("work-schedule")}
             >
-              <Text className="text-2xl">📅</Text>
+              <Calendar size={32} color="#4f46e5" />
               <Text className="text-lg mt-2 text-indigo-600 font-medium">勤務表</Text>
             </TouchableOpacity>
           </ResponsiveGrid>

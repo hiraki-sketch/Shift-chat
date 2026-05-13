@@ -1,4 +1,5 @@
 import { useCallback } from 'react';
+import { CircleHelp, MessageSquare } from "lucide-react-native";
 import { Alert, ScrollView, Switch, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useCreateChatThreadManagement } from "../src/hooks/useCreateChatThreadManagement";
@@ -24,7 +25,7 @@ export function CreateChatThread({ user, onNavigate }: CreateChatThreadProps) {
     isSubmitting,
   } = state;
   const { templates } = data;
-  const { canSubmit } = derived;
+  const { canSubmit, descriptionError, descriptionLength, descriptionMaxLength } = derived;
   const { getShiftText, getShiftColor } = utils;
   const {
     setTitle,
@@ -70,10 +71,10 @@ export function CreateChatThread({ user, onNavigate }: CreateChatThreadProps) {
           <View className="space-y-6">
             <Card>
               <View className="mb-4">
-                <Text className="text-lg font-semibold flex-row items-center">
-                  <Text className="mr-2">💬</Text>
-                  <Text>チャット詳細</Text>
-                </Text>
+                <View className="flex-row items-center">
+                  <MessageSquare size={18} color="#111827" />
+                  <Text className="text-lg font-semibold ml-2">チャット詳細</Text>
+                </View>
               </View>
               <View className="space-y-4">
                 <View className="space-y-2">
@@ -96,6 +97,14 @@ export function CreateChatThread({ user, onNavigate }: CreateChatThreadProps) {
                     numberOfLines={3}
                     className="rounded-xl px-4 py-3"
                   />
+                  <View className="mt-1 flex-row items-center justify-between">
+                    <Text className={`text-xs ${descriptionError ? "text-destructive" : "text-muted-foreground"}`}>
+                      {descriptionError ?? " "}
+                    </Text>
+                    <Text className={`text-xs ${descriptionLength > descriptionMaxLength ? "text-destructive" : "text-muted-foreground"}`}>
+                      {descriptionLength} / {descriptionMaxLength}
+                    </Text>
+                  </View>
                 </View>
 
                 <View className="space-y-2">
@@ -152,7 +161,7 @@ export function CreateChatThread({ user, onNavigate }: CreateChatThreadProps) {
               <View className="p-3 border rounded-lg bg-muted">
                 <View className="flex-row items-center space-x-3">
                   <View className="w-10 h-10 bg-blue-100 rounded-lg items-center justify-center">
-                    <Text className="text-2xl">💬</Text>
+                    <MessageSquare size={20} color="#2563eb" />
                   </View>
                   <View className="flex-1">
                     <Text className="font-medium text-foreground text-base">
@@ -202,7 +211,7 @@ export function CreateChatThread({ user, onNavigate }: CreateChatThreadProps) {
             {/* ヘルプ */}
             <View className="bg-muted rounded-2xl p-4">
               <View className="flex-row items-start space-x-2">
-                <Text className="text-2xl">ℹ️</Text>
+                <CircleHelp size={20} color="#6b7280" />
                 <View className="flex-1 space-y-2">
                   <Text className="text-sm text-foreground">
                     <Text className="font-bold">公開設定:</Text> 部署全体に公開すると、すべてのメンバーが参加できます。

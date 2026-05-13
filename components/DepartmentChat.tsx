@@ -20,6 +20,7 @@ import { Badge } from './ui/badge';
 import { Button } from './ui/button';
 import { Card } from './ui/card';
 import { Input } from './ui/input';
+import { Label } from './ui/label';
 interface DepartmentChatProps {
   user: User;
   onNavigate: (page: string) => void;
@@ -29,11 +30,20 @@ export function DepartmentChat({ user, onNavigate }: DepartmentChatProps) {
   const currentShift = useShiftStore((state) => state.selectedShift);
   const { state, data, derived, utils, actions, query } = useDepartmentChatManagement(user);
   const { isPending, isError, error, refetch } = query;
-  const { newAnnouncement, isComposing, isSending, isDeleting } = state;
+  const { announcementTitle, newAnnouncement, isComposing, isSending, isDeleting } = state;
   const { announcements } = data;
-  const { canSend } = derived;
+  const {
+    canSend,
+    titleError,
+    bodyError,
+    titleLength,
+    bodyLength,
+    titleMaxLength,
+    bodyMaxLength,
+  } = derived;
   const { canDeleteAnnouncement } = utils;
   const {
+    setAnnouncementTitle,
     setNewAnnouncement,
     handleToggleCompose,
     handleCancelCompose,
@@ -160,6 +170,26 @@ export function DepartmentChat({ user, onNavigate }: DepartmentChatProps) {
         >
           <View className="bg-card border-t border-border p-4">
             <View className="gap-3">
+              <View>
+                <Label>タイトル *</Label>
+                <Input
+                  value={announcementTitle}
+                  onChangeText={setAnnouncementTitle}
+                  placeholder="部署連絡タイトルを入力してください"
+                  className="bg-muted rounded-xl p-3 mt-2"
+                />
+                <View className="mt-1 flex-row items-center justify-between">
+                  <Text className={`text-xs ${titleError ? "text-destructive" : "text-muted-foreground"}`}>
+                    {titleError ?? " "}
+                  </Text>
+                  <Text className={`text-xs ${titleLength > titleMaxLength ? "text-destructive" : "text-muted-foreground"}`}>
+                    {titleLength} / {titleMaxLength}
+                  </Text>
+                </View>
+              </View>
+
+              <View>
+                <Label>本文 *</Label>
               <Input
                 value={newAnnouncement}
                 onChangeText={setNewAnnouncement}
@@ -167,6 +197,15 @@ export function DepartmentChat({ user, onNavigate }: DepartmentChatProps) {
                 multiline
                 className="bg-muted rounded-xl p-3 min-h-[80px]"
               />
+                <View className="mt-1 flex-row items-center justify-between">
+                  <Text className={`text-xs ${bodyError ? "text-destructive" : "text-muted-foreground"}`}>
+                    {bodyError ?? " "}
+                  </Text>
+                  <Text className={`text-xs ${bodyLength > bodyMaxLength ? "text-destructive" : "text-muted-foreground"}`}>
+                    {bodyLength} / {bodyMaxLength}
+                  </Text>
+                </View>
+              </View>
               <View className="flex-row gap-3">
                 <Button
                   variant="outline"

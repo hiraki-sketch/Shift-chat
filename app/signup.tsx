@@ -1,5 +1,7 @@
-import { LoginScreen } from "../components/LoginScreen";
+import { Redirect } from "expo-router";
 
 export default function Signup() {
-    return <LoginScreen initialIsSignUp={true} />;
+    // サインアップ動線を停止中
+    // return <LoginScreen initialIsSignUp={true} />;
+    return <Redirect href="/login" />;
 }

@@ -10,9 +10,15 @@ import {
   deleteIncidentReport,
   fetchIncidentReports,
   insertIncidentReport,
-  type InsertIncidentReportInput,
   uploadIncidentPhotos,
+  type InsertIncidentReportInput,
 } from "../api/incidentReports";
+import {
+  BODY_MAX_LENGTH,
+  INCIDENT_REPORT_TITLE_MAX_LENGTH,
+  getLiveValidationMessage,
+  getSubmitValidationMessage,
+} from "../lib/inputValidation";
 import { queryKeys } from "../lib/queryKeys";
 
 type Severity = "low" | "medium" | "high";
@@ -94,11 +100,24 @@ export function useIncidentReportManagement(user: User, selectedShift: Shift) {
 
   const existingReports = reportsQuery.data ?? [];
 
-  const canSubmit = title.trim().length > 0 && body.trim().length > 0;
+  const titleError = getLiveValidationMessage(
+    title,
+    "異常報告タイトル",
+    INCIDENT_REPORT_TITLE_MAX_LENGTH
+  );
+  const bodyError = getLiveValidationMessage(body, "本文", BODY_MAX_LENGTH);
+  const titleSubmitError = getSubmitValidationMessage(
+    title,
+    "異常報告タイトル",
+    INCIDENT_REPORT_TITLE_MAX_LENGTH
+  );
+  const bodySubmitError = getSubmitValidationMessage(body, "本文", BODY_MAX_LENGTH);
+  const canSubmit = !titleSubmitError && !bodySubmitError;
 
   const handleSubmit = useCallback(async (): Promise<SubmitResult> => {
-    if (!canSubmit) {
-      return { ok: false, title: "入力エラー", message: "必須項目を入力してください" };
+    const validationMessage = titleSubmitError ?? bodySubmitError;
+    if (validationMessage) {
+      return { ok: false, title: "入力エラー", message: validationMessage };
     }
 
     if (!user.departmentId) {
@@ -133,13 +152,14 @@ export function useIncidentReportManagement(user: User, selectedShift: Shift) {
     }
   }, [
     body,
-    canSubmit,
+    bodySubmitError,
     submitMutation,
     photoUris,
     selectedShift,
     severity,
     shift,
     title,
+    titleSubmitError,
     user.departmentId,
     user.id,
   ]);
@@ -291,6 +311,12 @@ export function useIncidentReportManagement(user: User, selectedShift: Shift) {
     },
     derived: {
       canSubmit,
+      titleError,
+      bodyError,
+      titleLength: title.length,
+      bodyLength: body.length,
+      titleMaxLength: INCIDENT_REPORT_TITLE_MAX_LENGTH,
+      bodyMaxLength: BODY_MAX_LENGTH,
     },
     utils: {
       getSeverityColor,

@@ -22,7 +22,7 @@ export function ChatThreads({ user, selectedShift, onNavigate }: ChatThreadsProp
   });
   const { selectedThread, newMessage, isSendingMessage, errorMessage } = state;
   const { threads, threadMessages } = data;
-  const { canSend } = derived;
+  const { canSend, messageError, messageLength, messageMaxLength } = derived;
   const { setSelectedThread, setNewMessage, handleSendMessage } = actions;
 
   if (selectedThread) {
@@ -71,14 +71,24 @@ export function ChatThreads({ user, selectedShift, onNavigate }: ChatThreadsProp
               <Text className="text-sm text-destructive mb-2">{errorMessage}</Text>
             )}
             <View className="flex-row items-end gap-3">
-              <Input
-                value={newMessage}
-                onChangeText={setNewMessage}
-                placeholder="メッセージを入力..."
-                className="flex-1 min-h-[44px] max-h-32 rounded-xl px-4 py-3"
-                multiline
-                textAlignVertical="top"
-              />
+              <View className="flex-1">
+                <Input
+                  value={newMessage}
+                  onChangeText={setNewMessage}
+                  placeholder="メッセージを入力..."
+                  className="flex-1 min-h-[44px] max-h-32 rounded-xl px-4 py-3"
+                  multiline
+                  textAlignVertical="top"
+                />
+                <View className="mt-1 flex-row items-center justify-between">
+                  <Text className={`text-xs ${messageError ? "text-destructive" : "text-muted-foreground"}`}>
+                    {messageError ?? " "}
+                  </Text>
+                  <Text className={`text-xs ${messageLength > messageMaxLength ? "text-destructive" : "text-muted-foreground"}`}>
+                    {messageLength} / {messageMaxLength}
+                  </Text>
+                </View>
+              </View>
               <Button
                 variant={canSend ? "default" : "secondary"}
                 onPress={handleSendMessage}

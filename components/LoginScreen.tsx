@@ -1,10 +1,7 @@
-import React, { memo, useState } from "react";
+import { Lock, Mail } from "lucide-react-native";
+import React, { memo } from "react";
 import {
-  ActivityIndicator,
   Image,
-  Modal,
-  Pressable,
-  ScrollView,
   Text,
   TouchableOpacity,
   View,
@@ -13,9 +10,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import type { DepartmentOption } from "../src/hooks/useLoginScreenManagement";
 import { useLoginScreenManagement } from "../src/hooks/useLoginScreenManagement";
-import { Button } from "./ui/button";
 import { Input } from "./ui/input";
-import { Label } from "./ui/label";
 
 /** =========================
  * UI Components (minimal)
@@ -69,21 +64,11 @@ function LoginForm({
   setEmail,
   password,
   setPassword,
-  displayName,
-  setDisplayName,
-  departmentId,
-  setDepartmentId,
-  departmentOptions,
-  departmentsLoading,
-  departmentsFetchError,
   onSubmit,
   onToggleMode,
   onForgotPassword,
 }: LoginFormProps) {
-  const [departmentPickerOpen, setDepartmentPickerOpen] = useState(false);
   const { width: windowWidth } = useWindowDimensions();
-  const selectedDepartmentLabel =
-    departmentOptions.find((d) => d.id === departmentId)?.name ?? "";
   const loginLogoCircle = Math.round(
     Math.min(220, Math.max(144, windowWidth * 0.42))
   );
@@ -117,7 +102,7 @@ function LoginForm({
 
         <View className="w-full max-w-md">
           <View className="bg-white rounded-2xl px-4 py-1 mb-4 flex-row items-center">
-            <Text className="text-gray-400 mr-3 text-base">✉</Text>
+            <Mail size={18} color="#9ca3af" style={{ marginRight: 12 }} />
             <Input
               value={email}
               onChangeText={setEmail}
@@ -128,7 +113,7 @@ function LoginForm({
           </View>
 
           <View className="bg-white rounded-2xl px-4 py-1 mb-4 flex-row items-center">
-            <Text className="text-gray-400 mr-3 text-base">🔒</Text>
+            <Lock size={18} color="#9ca3af" style={{ marginRight: 12 }} />
             <Input
               value={password}
               onChangeText={setPassword}
@@ -167,12 +152,6 @@ function LoginForm({
               パスワードを忘れた場合
             </Text>
           </TouchableOpacity>
-
-          <TouchableOpacity onPress={onToggleMode} className="items-center">
-            <Text className="text-white text-base underline">
-              アカウントを作成する
-            </Text>
-          </TouchableOpacity>
         </View>
       </View>
     );
@@ -184,142 +163,15 @@ function LoginForm({
         <View className="text-center mb-6">
           <Text className="text-2xl font-bold">GENBA</Text>
           <Text className="text-muted-foreground mt-2">
-            アカウントを作成してください
+         
           </Text>
         </View>
 
         <View className="space-y-4">
-          <View className="space-y-2">
-            <Label>表示名</Label>
-            <Input
-              value={displayName}
-              onChangeText={setDisplayName}
-              placeholder="平木友隆"
-            />
-          </View>
-
-          <View className="space-y-2">
-            <Label>部署</Label>
-            <TouchableOpacity
-              onPress={() => setDepartmentPickerOpen(true)}
-              disabled={departmentsLoading || !!departmentsFetchError}
-              className="border border-border rounded-md px-3 py-3 bg-background"
-              activeOpacity={0.7}
-            >
-              {departmentsLoading ? (
-                <View className="flex-row items-center gap-2">
-                  <ActivityIndicator size="small" />
-                  <Text className="text-muted-foreground">読み込み中...</Text>
-                </View>
-              ) : departmentsFetchError ? (
-                <Text className="text-destructive text-sm">
-                  {departmentsFetchError}
-                </Text>
-              ) : (
-                <Text
-                  className={
-                    selectedDepartmentLabel
-                      ? "text-foreground"
-                      : "text-muted-foreground"
-                  }
-                >
-                  {selectedDepartmentLabel || "タップして部署を選択"}
-                </Text>
-              )}
-            </TouchableOpacity>
-            <Modal
-              visible={departmentPickerOpen}
-              animationType="fade"
-              transparent
-              onRequestClose={() => setDepartmentPickerOpen(false)}
-            >
-              <Pressable
-                className="flex-1 bg-black/50 justify-end"
-                onPress={() => setDepartmentPickerOpen(false)}
-              >
-                <Pressable
-                  className="bg-card rounded-t-2xl border border-border max-h-[70%] pb-8"
-                  onPress={(e) => e.stopPropagation()}
-                >
-                  <View className="flex-row justify-between items-center px-4 py-3 border-b border-border">
-                    <Text className="text-lg font-semibold">部署を選択</Text>
-                    <TouchableOpacity onPress={() => setDepartmentPickerOpen(false)}>
-                      <Text className="text-primary font-medium">閉じる</Text>
-                    </TouchableOpacity>
-                  </View>
-                  <ScrollView
-                    keyboardShouldPersistTaps="handled"
-                    className="px-2 py-2"
-                  >
-                    {departmentOptions.length === 0 ? (
-                      <Text className="text-muted-foreground text-center py-6 px-4">
-                        登録されている部署がありません。管理者に連絡してください。
-                      </Text>
-                    ) : (
-                      departmentOptions.map((d) => (
-                        <TouchableOpacity
-                          key={d.id}
-                          onPress={() => {
-                            setDepartmentId(d.id);
-                            setDepartmentPickerOpen(false);
-                          }}
-                          className={`py-3 px-4 rounded-lg mb-1 ${
-                            departmentId === d.id ? "bg-primary/10" : ""
-                          }`}
-                        >
-                          <Text className="text-base text-foreground">
-                            {d.name}
-                          </Text>
-                        </TouchableOpacity>
-                      ))
-                    )}
-                  </ScrollView>
-                </Pressable>
-              </Pressable>
-            </Modal>
-          </View>
-
-          <View className="space-y-2">
-            <Label>メールアドレス</Label>
-            <Input
-              value={email}
-              onChangeText={setEmail}
-              placeholder="example@company.com"
-            />
-          </View>
-
-          <View className="space-y-2">
-            <Label>パスワード</Label>
-            <Input
-              value={password}
-              onChangeText={setPassword}
-              placeholder="••••••••"
-              secureTextEntry
-            />
-          </View>
-
-          {error && (
-            <View className="p-3 bg-red-50 border border-red-200 rounded-lg">
-              <Text className="text-red-700 text-sm">{error}</Text>
-            </View>
-          )}
-
-          {message && (
-            <View className="p-3 bg-green-50 border border-green-200 rounded-lg">
-              <Text className="text-green-700 text-sm">{message}</Text>
-            </View>
-          )}
-
-          <Button onPress={onSubmit} className="w-full" disabled={isLoading}>
-            {isLoading ? "処理中..." : "アカウント作成"}
-          </Button>
-
-          <View className="mt-3 items-center">
-            <TouchableOpacity onPress={onForgotPassword}>
-              <Text className="text-primary underline">
-                パスワードを忘れた場合
-              </Text>
-            </TouchableOpacity>
+          <View className="p-3 bg-muted rounded-md">
+            <Text className="text-sm text-muted-foreground text-center">
+             。
+            </Text>
           </View>
 
           <View className="mt-4 items-center">
@@ -328,13 +180,6 @@ function LoginForm({
                 ログインに戻る
               </Text>
             </TouchableOpacity>
-          </View>
-
-          <View className="mt-4 p-3 bg-muted rounded-md">
-            <Text className="text-sm text-muted-foreground text-center">
-              <Text className="font-bold">テスト用:</Text>{" "}
-              自分で設定したメールアドレスでログインして下さい。
-            </Text>
           </View>
         </View>
       </Card>

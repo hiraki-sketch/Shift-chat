@@ -40,7 +40,15 @@ export function IncidentReport({ user, selectedShift, onNavigate }: IncidentRepo
   const { isPending, isDeleting, isError, error, refetch } = query;
   const { title, body, severity, shift, isSubmitting, showExistingReports, photoUris } = state;
   const { existingReports } = data;
-  const { canSubmit } = derived;
+  const {
+    canSubmit,
+    titleError,
+    bodyError,
+    titleLength,
+    bodyLength,
+    titleMaxLength,
+    bodyMaxLength,
+  } = derived;
   const { getSeverityColor, getSeverityText, canDeleteReport } = utils;
   const {
     setTitle,
@@ -209,6 +217,14 @@ export function IncidentReport({ user, selectedShift, onNavigate }: IncidentRepo
                       placeholder="異常の概要を入力"
                       className="w-full min-w-0"
                     />
+                    <View className="mt-1 flex-row items-center justify-between">
+                      <Text className={`text-xs ${titleError ? "text-destructive" : "text-muted-foreground"}`}>
+                        {titleError ?? " "}
+                      </Text>
+                      <Text className={`text-xs ${titleLength > titleMaxLength ? "text-destructive" : "text-muted-foreground"}`}>
+                        {titleLength} / {titleMaxLength}
+                      </Text>
+                    </View>
                   </View>
 
                   <View className="min-w-0">
@@ -223,6 +239,14 @@ export function IncidentReport({ user, selectedShift, onNavigate }: IncidentRepo
                       className="w-full min-w-0 min-h-[120px] align-top"
                       textAlignVertical="top"
                     />
+                    <View className="mt-1 flex-row items-center justify-between">
+                      <Text className={`text-xs ${bodyError ? "text-destructive" : "text-muted-foreground"}`}>
+                        {bodyError ?? " "}
+                      </Text>
+                      <Text className={`text-xs ${bodyLength > bodyMaxLength ? "text-destructive" : "text-muted-foreground"}`}>
+                        {bodyLength} / {bodyMaxLength}
+                      </Text>
+                    </View>
                   </View>
 
                   <View className="min-w-0">

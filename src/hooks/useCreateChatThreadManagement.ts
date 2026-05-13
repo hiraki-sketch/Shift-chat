@@ -3,6 +3,11 @@ import { useCallback, useMemo, useState } from "react";
 import type { Shift, User } from "../../types";
 import { createChatThread } from "../api/chatThreads";
 import { toJapaneseErrorMessage } from "../lib/errorMessages";
+import {
+  BODY_MAX_LENGTH,
+  getLiveValidationMessage,
+  getSubmitValidationMessage,
+} from "../lib/inputValidation";
 import { queryKeys } from "../lib/queryKeys";
 
 type ShiftOrAll = Shift | "all";
@@ -49,7 +54,16 @@ export function useCreateChatThreadManagement(user: User) {
     []
   );
 
-  const canSubmit = title.trim().length > 0;
+  const descriptionError = getLiveValidationMessage(description, "説明", BODY_MAX_LENGTH, {
+    required: false,
+  });
+  const descriptionSubmitError = getSubmitValidationMessage(
+    description,
+    "説明",
+    BODY_MAX_LENGTH,
+    { required: false }
+  );
+  const canSubmit = title.trim().length > 0 && !descriptionSubmitError;
 
   const getShiftText = useCallback((shift: ShiftOrAll) => {
     switch (shift) {
@@ -111,6 +125,14 @@ export function useCreateChatThreadManagement(user: User) {
       };
     }
 
+    if (descriptionSubmitError) {
+      return {
+        ok: false,
+        title: "入力エラー",
+        message: descriptionSubmitError,
+      };
+    }
+
     if (!user.departmentId) {
       return {
         ok: false,
@@ -161,6 +183,7 @@ export function useCreateChatThreadManagement(user: User) {
     user.displayName,
     user.id,
     createThreadMutation,
+    descriptionSubmitError,
   ]);
 
   return {
@@ -177,6 +200,9 @@ export function useCreateChatThreadManagement(user: User) {
     },
     derived: {
       canSubmit,
+      descriptionError,
+      descriptionLength: description.length,
+      descriptionMaxLength: BODY_MAX_LENGTH,
     },
     utils: {
       getShiftText,
