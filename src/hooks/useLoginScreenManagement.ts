@@ -57,7 +57,7 @@ export function useLoginScreenManagement({
   const router = useRouter();
 
   const handleGoHome = useCallback(() => {
-    router.replace("/home");
+    router.replace("/");
   }, [router]);
 
   const handleToggleMode = useCallback(() => {

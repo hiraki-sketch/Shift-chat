@@ -73,3 +73,4 @@ Join our community of developers creating universal apps.
 - 通常のアプリ内画面か？ -> `AppHeader` を使う。
 - 認証画面・特殊画面か？ -> 個別ヘッダー可。
 - 個別ヘッダーを使う場合は、コードコメントか PR 説明に短く理由を残す。
+

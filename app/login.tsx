@@ -11,5 +11,5 @@ export default function LoginPage() {
         return <Redirect href="/" />;
     }
     //未ログイン時
-    return <LoginScreen onPressLogin={() => router.push("/home")} />;
+    return <LoginScreen onPressLogin={() => router.push("/")} />;
 }

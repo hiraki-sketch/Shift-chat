@@ -12,7 +12,6 @@ import { Button } from "./ui/button";
 import {
   AlertTriangle,
   Bell,
-  FileText,
   MessageSquare,
   Search,
   Settings,
@@ -300,10 +299,11 @@ export function Dashboard({
               <Text className="text-lg mt-2 text-green-600 font-medium">検索</Text>
             </TouchableOpacity>
             <TouchableOpacity
-              className="h-28 items-center justify-center bg-white border border-purple-200 rounded-xl"
+              className="h-28 items-center justify-center bg-white border border-cyan-200 rounded-xl"
+              onPress={() => onNavigate("department-chat")}
             >
-              <FileText size={32} color="#a855f7" />
-              <Text className="text-lg mt-2 text-purple-600 font-medium">COMMING SOON</Text>
+              <Bell size={32} color="#06b6d4" />
+              <Text className="text-lg mt-2 text-cyan-600 font-medium">部署連絡</Text>
             </TouchableOpacity>
           </ResponsiveGrid>
         </G>
@@ -323,13 +323,6 @@ export function Dashboard({
             >
               <Text className="text-2xl">📅</Text>
               <Text className="text-lg mt-2 text-indigo-600 font-medium">勤務表</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              className="h-28 items-center justify-center bg-white border border-orange-200 rounded-xl"
-              onPress={() => onNavigate("vacation")}
-            >
-              <Text className="text-2xl">✈️</Text>
-              <Text className="text-lg mt-2 text-orange-600 font-medium">有給休暇</Text>
             </TouchableOpacity>
           </ResponsiveGrid>
         </G>

@@ -1,6 +1,7 @@
 # Dashboard コンポーネント
 
-このプロジェクトは、Vite + React + Tailwindで書かれたUIをExpo/React Native + NativeWindに変換したものです。
+このプロジェクトは、Vite + React + Tailwindで書かれたUIを
+Expo/React Native + NativeWindに変換したものです。
 
 ## 変換されたコンポーネント
 

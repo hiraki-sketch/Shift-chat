@@ -1,13 +1,6 @@
-//app/home.tsx
-import { useRouter } from "expo-router";
-import { HomeScreen } from "../components/HomeScreen";
+// app/home.tsx
+import { Redirect } from "expo-router";
 
 export default function HomePage() {
-    const router = useRouter();
-    
-    return (
-        <HomeScreen
-            onNavigate={(page) => router.push(`/${page}` as any)}
-        />
-    );
+  return <Redirect href="/" />;
 }
