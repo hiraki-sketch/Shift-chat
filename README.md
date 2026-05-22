@@ -43,10 +43,6 @@ https://apps.apple.com/jp/app/genba/id6769666117
 - ユーザー権限による表示制御
 - 管理者 / 作業員の権限分離
 
-Apple  
-App Store: https://apps.apple.com/jp/app/genba/id6769666117
-　Google
- 追加予定です
 
 
 
